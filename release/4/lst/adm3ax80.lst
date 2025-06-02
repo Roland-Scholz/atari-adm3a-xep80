@@ -1,0 +1,237 @@
+ca65 V2.17 - Git 59ab140
+Main file   : ..\src\adm3ax80.a65
+Current file: ..\src\adm3ax80.a65
+
+000000r 1               ;
+000000r 1               ;CHAR =ATES
+000000r 1               ;
+000000r 1               LF	=	10
+000000r 1               CR	=	13
+000000r 1               ESC	=	$1B
+000000r 1               SPACE	=	$20
+000000r 1               CNTL	=	$5E
+000000r 1               CLS	=	$7D
+000000r 1               EOL	=	$9B
+000000r 1               ;
+000000r 1               ;80 COL COMMANDS
+000000r 1               ;
+000000r 1               XCH80	=	$50
+000000r 1               LMG80	=	$60
+000000r 1               LMH80	=	$70
+000000r 1               YCR80	=	$80
+000000r 1               SGR80	=	$99
+000000r 1               PAG80	=	$9A
+000000r 1               RMG80	=	$A0
+000000r 1               RMH80	=	$B0
+000000r 1               GET80	=	$C0
+000000r 1               CUR80	=	$C1
+000000r 1               RST80	=	$C2
+000000r 1               PST80	=	$C3
+000000r 1               CLR80	=	$C4
+000000r 1               LIS80	=	$D0
+000000r 1               SCR80	=	$D2
+000000r 1               SCB80	=	$D3
+000000r 1               GRF80	=	$D4
+000000r 1               ICM80	=	$D5
+000000r 1               PAL80	=	$D7
+000000r 1               CRS80	=	$D9
+000000r 1               MCF80	=	$DB
+000000r 1               PNT80	=	$DD
+000000r 1               ;
+000000r 1               ;MEMORY EQUATES
+000000r 1               ;
+000000r 1               DOSINI	=	$0C
+000000r 1               ICDNOZ	=	$21
+000000r 1               ICCOMZ	=	$22
+000000r 1               ICAX1Z	=	$2A
+000000r 1               ICAX2Z	=	$2B
+000000r 1               ICIDNO	=	$2E
+000000r 1               LMARGN	=	$52
+000000r 1               RMARGN	=	$53
+000000r 1               VCP	=	$54
+000000r 1               HCP	=	$55
+000000r 1               IN	=	$CC
+000000r 1               CDTMV3	=	$21C
+000000r 1               SDMCTL	=	$22F
+000000r 1               KEYDEL	=	$2D9
+000000r 1               KEYREP	=	$2DA
+000000r 1               DVSTAT	=	$2EA
+000000r 1               CRSINH	=	$2F0
+000000r 1               CHBAS	=	$2F4
+000000r 1               LISTF	=	$2FE
+000000r 1               SFLAG	=	$2FF
+000000r 1               HATABS	=	$31A
+000000r 1               ICDNO	=	$341
+000000r 1               ICCOM	=	$342
+000000r 1               PAL	=	$D014
+000000r 1               IRQEN	=	$D20E
+000000r 1               SKSTAT	=	$D20F
+000000r 1               PORTA	=	$D300
+000000r 1               PACTL	=	$D302
+000000r 1               DMACTL	=	$D400
+000000r 1               WSYNC	=	$D40A
+000000r 1               VCOUNT	=	$D40B
+000000r 1               NMIEN	=	$D40E
+000000r 1               
+000000r 1               
+000000r 1  20 rr rr     READ:		JSR	DISAB				;DISABLE IRQ INTS
+000003r 1  A9 C0        		LDA	#GET80
+000005r 1  20 rr rr     		JSR	CINP				;REQUEST, GET CHAR
+000008r 1  48           		PHA					;SAVE CHAR
+000009r 1  20 rr rr     		JSR	INPUT				;GET CURS
+00000Cr 1  20 rr rr     		JSR	CURCK				;CHECK FOR X>$4F
+00000Fr 1  68           		PLA					;RESTORE CHAR
+000010r 1  4C rr rr     		JMP	ENAB
+000013r 1               ;
+000013r 1  20 rr rr     CINP:		JSR	CMD
+000016r 1  A9 00        INPUT:		LDA	#00				;TIME CRITICAL CODE
+000018r 1  AA           		TAX					;MUST NOT CROSS A
+000019r 1  A0 1F        		LDY	#31				;PAGE BOUNDARY
+00001Br 1  8D rr rr     		STA	DATIN
+00001Er 1  AD 00 D3     IN0:		LDA 	PORTA 				;4
+000021r 1  2D rr rr     		AND	INMSK 				;4
+000024r 1  F0 08        		BEQ	IN01				;3 IF A 0, 2 IF NOT
+000026r 1  CA           		DEX
+000027r 1  D0 F5        		BNE	IN0
+000029r 1  88           		DEY					;TIMEOUT LOOPS
+00002Ar 1  D0 F2        		BNE	IN0
+00002Cr 1  38           		SEC					;NO RESPONSE
+00002Dr 1  60           		RTS
+00002Er 1  A2 08        IN01:		LDX	#08
+000030r 1  A0 0C        		LDY	#12				;2
+000032r 1  88           IN1:		DEY
+000033r 1  D0 FD        		BNE	IN1				;5*Y-1
+000035r 1  EA           		NOP					;2
+000036r 1  A0 0F        IN10:		LDY	#15				;2 MAIN DLY COUNT
+000038r 1  88           IN2:		DEY
+000039r 1  D0 FD        		BNE	IN2				;5*Y-1
+00003Br 1  AD 00 D3     		LDA	PORTA				;4 GET BYTE
+00003Er 1  2D rr rr     		AND	INMSK				;4 GET BIT
+000041r 1  18           		CLC					;2
+000042r 1  F0 01        		BEQ	IN25				;0=3,1=2
+000044r 1  38           		SEC					;1=2
+000045r 1  90 00        IN25:		BCC	IN26				;0=3,1=2
+000047r 1  CA           IN26:		DEX					;2 DEC COUNT
+000048r 1  30 05        		BMI	IN3				;2 (3 DONE)
+00004Ar 1  6E rr rr     		ROR	DATIN				;6 SHIFT IN BIT
+00004Dr 1  90 E7        		BCC	IN10				;3 ALWAYS
+00004Fr 1  A0 0F        IN3:		LDY	#15				;DELAY 1/2 BIT
+000051r 1  88           IN33:		DEY
+000052r 1  D0 FD        		BNE	IN33
+000054r 1  AD rr rr     		LDA	DATIN				;GET CHAR (Y=0)
+000057r 1  90 19        		BCC	I5				;RETURN IF CHAR
+000059r 1  10 0F        		BPL	I0				;HORIZ WITH NO VERT
+00005Br 1  29 7F        		AND	#$7F				;CLEAR UPPER FLAG
+00005Dr 1  C9 51        		CMP	#$51				;TEST HORIZ/VERT
+00005Fr 1  90 04        		BCC	I00 				;HORIZONTAL
+000061r 1  29 1F        		AND	#$1F				;CLEAR MID FLAG
+000063r 1  B0 06        		BCS	I01				;SAVE VERT
+000065r 1  20 rr rr     I00:		JSR	I0				;SAVE HORIZ
+000068r 1  90 AC        		BCC	INPUT				;GET VERT
+00006Ar 1  C8           I0:		INY					;OFFSET FOR HORIZ
+00006Br 1  99 54 00     I01:		STA	VCP,Y				;CURS POSITION
+00006Er 1  99 rr rr     		STA	VCS,Y				;CURS SHADOW
+000071r 1  18           		CLC					;INDICATE RESPONSE
+000072r 1  60           I5:		RTS
+000073r 1               ;
+000073r 1  A5 55        CURCK:		LDA	HCP				;CHECK HORIZ CURSOR
+000075r 1  C9 50        		CMP	#$50				;FOR >$4F
+000077r 1  90 F9        		BCC	I5				;IF NOT
+000079r 1  A9 C1        		LDA	#CUR80				;GO GET REAL VALUE
+00007Br 1  20 rr rr     		JSR	CINP
+00007Er 1  4C rr rr     		JMP	I0				;AND STORE IT (Y=0)
+000081r 1               ;
+000081r 1               ;
+000081r 1               ;
+000081r 1  38           CMD: 		SEC 					;THIS CODE MUST NOT
+000082r 1  B0 01        		BCS 	OUT 				;CROSS A PAGE BOUNDARY
+000084r 1  18           OUTPUT:		CLC 					;CMD FLAG=0 FOR CHAR
+000085r 1  A0 00        OUT: 		LDY 	#00
+000087r 1  20 rr rr     		JSR 	SEND				;SEND START BIT
+00008Ar 1               
+00008Ar 1  A2 08        		LDX 	#08				;SETUP BIT COUNT OF 9
+00008Cr 1  EA           		NOP
+00008Dr 1  EA           		NOP
+00008Er 1  EA           		NOP					;2+2+2+2=8
+00008Fr 1  6A           OUT0:		ROR 	A				;PUT BIT INTO CARRY
+000090r 1  B0 09        		BCS 	HI
+000092r 1  90 00        		BCC 	LO				;2+3=5 CYCLES TO LO
+000094r 1  A0 00        LO:		LDY 	#00				;5+2 CYCLES TO JSR
+000096r 1  20 rr rr     		JSR 	SEND				;SEND A 0
+000099r 1  90 08        		BCC 	OUT1				;3 CYCLES
+00009Br 1  AC rr rr     HI:		LDY 	OUTMS				;3+4 CYCLES TO JSR
+00009Er 1  20 rr rr     		JSR 	SEND				;SEND A 1
+0000A1r 1  B0 00        		BCS 	OUT1				;3 CYCLES
+0000A3r 1  CA           OUT1:		DEX					;NEXT BIT 2 CYC
+0000A4r 1  10 DF        		BPL 	OUT				;MORE 3 OR 2 CYC
+0000A6r 1  30 00        		BMI 	OUT2				;SEND STOP BIT 3 CYC
+0000A8r 1  AC rr rr     OUT2:		LDY 	OUTMS				;SEND A 1
+0000ABr 1  D0 00        		BNE 	OUT3
+0000ADr 1  20 rr rr     OUT3:		JSR 	SEND				;2+3+4+3=12
+0000B0r 1  60           		RTS
+0000B1r 1               
+0000B1r 1  8C 00 D3     SEND:		STY 	PORTA				;OUTPUT BIT
+0000B4r 1  A0 0C        		LDY 	#12				;TIMER FOR 15.7KB
+0000B6r 1  88           S1:		DEY
+0000B7r 1  D0 FD        		BNE 	S1				;5*Y-1 CYCLES
+0000B9r 1  F0 00        		BEQ 	S2				;3
+0000BBr 1  EA           S2:		NOP
+0000BCr 1  EA           		NOP
+0000BDr 1  EA           		NOP
+0000BEr 1  EA           		NOP					;2+2+2+2=8
+0000BFr 1  60           S3:		RTS					;6 CYCLES
+0000C0r 1               
+0000C0r 1               ;
+0000C0r 1               ;
+0000C0r 1               ;
+0000C0r 1               ;
+0000C0r 1  A9 01        JTOGL:		LDA	#01
+0000C2r 1  4D rr rr     		EOR 	TOGGLE
+0000C5r 1  8D rr rr     		STA 	TOGGLE
+0000C8r 1  AE rr rr     JINIT:		LDX 	TOGGLE
+0000CBr 1  BC rr rr     		LDY	INMST,X
+0000CEr 1  8C rr rr     		STY	INMSK
+0000D1r 1  BC rr rr     		LDY	OUTMT,X
+0000D4r 1  8C rr rr     		STY	OUTMS
+0000D7r 1  A9 FF        		LDA	#$FF
+0000D9r 1  8D 00 D3     		STA	PORTA
+0000DCr 1  A2 38        		LDX	#$38
+0000DEr 1  8E 02 D3     		STX	PACTL
+0000E1r 1  8C 00 D3     		STY	PORTA
+0000E4r 1  A2 3C        		LDX	#$3C
+0000E6r 1  8E 02 D3     		STX	PACTL
+0000E9r 1  60           		RTS
+0000EAr 1               ;
+0000EAr 1  A0 00        DISAB:		LDY	#00
+0000ECr 1  8C 0E D4     		STY	NMIEN
+0000EFr 1  78           		SEI
+0000F0r 1  60           		RTS
+0000F1r 1               ;
+0000F1r 1  A0 C0        ENAB:		LDY	#$C0
+0000F3r 1  8C 0E D4     		STY	NMIEN
+0000F6r 1  58           		CLI
+0000F7r 1  A0 01        EXIT:		LDY #01
+0000F9r 1  60           ERTS:		RTS
+0000FAr 1               ;
+0000FAr 1  00           VCS:		.BYTE	0
+0000FBr 1  00           HCS:		.BYTE	0
+0000FCr 1  00           DEV:		.BYTE	0
+0000FDr 1  00           LMARGS:		.BYTE	0
+0000FEr 1  00           LISTS:		.BYTE	0
+0000FFr 1  00           MODE:		.BYTE	0
+000100r 1  00           CRSS:		.BYTE	0
+000101r 1               ;
+000101r 1               ;
+000101r 1  00           DATIN:		.BYTE	0
+000102r 1  00           HCPS:		.BYTE	0
+000103r 1  00           HCPE:		.BYTE	0
+000104r 1  00           KSTAT:		.BYTE	0
+000105r 1  00           INMSK:		.BYTE	0
+000106r 1  00           OUTMS:		.BYTE	0
+000107r 1  00           TOGGLE:		.BYTE	0
+000108r 1  00           TIOCB:		.BYTE	0
+000109r 1  00           TCHAR:		.BYTE	0
+00010Ar 1               
+00010Ar 1  02 20        INMST:		.BYTE	02,$20
+00010Cr 1  01 10        OUTMT:		.BYTE	01,$10
+00010Dr 1               
