@@ -1,0 +1,685 @@
+ca65 V2.17 - Git 59ab140
+Main file   : ..\src\adm3ax80.a65
+Current file: ..\src\adm3ax80.a65
+
+000000r 1               		.org $5000
+005000  1               
+005000  1               ;
+005000  1               ;CHAR =ATES
+005000  1               ;
+005000  1               LF	=	10
+005000  1               CR	=	13
+005000  1               ESC	=	$1B
+005000  1               CUP	=	28
+005000  1               CDOWN	=	29
+005000  1               CLEFT	=	30
+005000  1               CRIGHT	=	31
+005000  1               SPACE	=	$20
+005000  1               CNTL	=	$5E
+005000  1               TABU 	=	$7F
+005000  1               CLS	=	$7D
+005000  1               EOL	=	$9B
+005000  1               DELIN	=	$9C
+005000  1               INSLIN  =	$9D
+005000  1               DELCHR  =	$FE
+005000  1               INSCHR	=	$FF
+005000  1               
+005000  1               CSRYMAX	=	23
+005000  1               ;
+005000  1               ;80 COL COMMANDS
+005000  1               ;
+005000  1               XCH80	=	$50
+005000  1               LMG80	=	$60
+005000  1               LMH80	=	$70
+005000  1               YCR80	=	$80
+005000  1               SGR80	=	$99
+005000  1               PAG80	=	$9A
+005000  1               RMG80	=	$A0
+005000  1               RMH80	=	$B0
+005000  1               GET80	=	$C0
+005000  1               CUR80	=	$C1
+005000  1               RST80	=	$C2
+005000  1               PST80	=	$C3
+005000  1               CLR80	=	$C4
+005000  1               LIS80	=	$D0
+005000  1               SCR80	=	$D2
+005000  1               SCB80	=	$D3
+005000  1               GRF80	=	$D4
+005000  1               ICM80	=	$D5
+005000  1               PAL80	=	$D7
+005000  1               CRS80	=	$D9
+005000  1               MCF80	=	$DB
+005000  1               PNT80	=	$DD
+005000  1               
+005000  1               TCP80	=	$F6					;set timing control pointer
+005000  1               TCR80	=	$F7					;set timing control register
+005000  1               ;
+005000  1               ;MEMORY EQUATES
+005000  1               ;
+005000  1               DOSINI	=	$0C
+005000  1               ICDNOZ	=	$21
+005000  1               ICCOMZ	=	$22
+005000  1               ICAX1Z	=	$2A
+005000  1               ICAX2Z	=	$2B
+005000  1               ICIDNO	=	$2E
+005000  1               LMARGN	=	$52
+005000  1               RMARGN	=	$53
+005000  1               VCP	=	$54
+005000  1               HCP	=	$55
+005000  1               IN	=	$CC
+005000  1               CDTMV3	=	$21C
+005000  1               SDMCTL	=	$22F
+005000  1               KEYDEL	=	$2D9
+005000  1               KEYREP	=	$2DA
+005000  1               DVSTAT	=	$2EA
+005000  1               CRSINH	=	$2F0
+005000  1               CHBAS	=	$2F4
+005000  1               LISTF	=	$2FE
+005000  1               SFLAG	=	$2FF
+005000  1               HATABS	=	$31A
+005000  1               ICDNO	=	$341
+005000  1               ICCOM	=	$342
+005000  1               PAL	=	$D014
+005000  1               IRQEN	=	$D20E
+005000  1               SKSTAT	=	$D20F
+005000  1               PORTA	=	$D300
+005000  1               PACTL	=	$D302
+005000  1               DMACTL	=	$D400
+005000  1               WSYNC	=	$D40A
+005000  1               VCOUNT	=	$D40B
+005000  1               NMIEN	=	$D40E
+005000  1               
+005000  1               ;
+005000  1               ;
+005000  1               ;
+005000  1  4C B0 50     		jmp	start
+005003  1               
+005003  1  20 71 50     CINP:		JSR	CMD
+005006  1  A9 00        INPUT:		LDA	#00				;TIME CRITICAL CODE
+005008  1  AA           		TAX					;MUST NOT CROSS A
+005009  1  A0 1F        		LDY	#31				;PAGE BOUNDARY
+00500B  1  8D 02 54     		STA	DATIN
+00500E  1  AD 00 D3     IN0:		LDA 	PORTA 				;4
+005011  1  2D 06 54     		AND	INMSK 				;4
+005014  1  F0 08        		BEQ	IN01				;3 IF A 0, 2 IF NOT
+005016  1  CA           		DEX
+005017  1  D0 F5        		BNE	IN0
+005019  1  88           		DEY					;TIMEOUT LOOPS
+00501A  1  D0 F2        		BNE	IN0
+00501C  1  38           		SEC					;NO RESPONSE
+00501D  1  60           		RTS
+00501E  1  A2 08        IN01:		LDX	#08
+005020  1  A0 0C        		LDY	#12				;2
+005022  1  88           IN1:		DEY
+005023  1  D0 FD        		BNE	IN1				;5*Y-1
+005025  1  EA           		NOP					;2
+005026  1  A0 0F        IN10:		LDY	#15				;2 MAIN DLY COUNT
+005028  1  88           IN2:		DEY
+005029  1  D0 FD        		BNE	IN2				;5*Y-1
+00502B  1  AD 00 D3     		LDA	PORTA				;4 GET BYTE
+00502E  1  2D 06 54     		AND	INMSK				;4 GET BIT
+005031  1  18           		CLC					;2
+005032  1  F0 01        		BEQ	IN25				;0=3,1=2
+005034  1  38           		SEC					;1=2
+005035  1  90 00        IN25:		BCC	IN26				;0=3,1=2
+005037  1  CA           IN26:		DEX					;2 DEC COUNT
+005038  1  30 05        		BMI	IN3				;2 (3 DONE)
+00503A  1  6E 02 54     		ROR	DATIN				;6 SHIFT IN BIT
+00503D  1  90 E7        		BCC	IN10				;3 ALWAYS
+00503F  1  A0 0F        IN3:		LDY	#15				;DELAY 1/2 BIT
+005041  1  88           IN33:		DEY
+005042  1  D0 FD        		BNE	IN33
+005044  1  AD 02 54     		LDA	DATIN				;GET CHAR (Y=0)
+005047  1  90 19        		BCC	I5				;RETURN IF CHAR
+005049  1  10 0F        		BPL	I0				;HORIZ WITH NO VERT
+00504B  1  29 7F        		AND	#$7F				;CLEAR UPPER FLAG
+00504D  1  C9 51        		CMP	#$51				;TEST HORIZ/VERT
+00504F  1  90 04        		BCC	I00 				;HORIZONTAL
+005051  1  29 1F        		AND	#$1F				;CLEAR MID FLAG
+005053  1  B0 06        		BCS	I01				;SAVE VERT
+005055  1  20 5A 50     I00:		JSR	I0				;SAVE HORIZ
+005058  1  90 AC        		BCC	INPUT				;GET VERT
+00505A  1  C8           I0:		INY					;OFFSET FOR HORIZ
+00505B  1  99 54 00     I01:		STA	VCP,Y				;CURS POSITION
+00505E  1  99 FA 53     		STA	VCS,Y				;CURS SHADOW
+005061  1  18           		CLC					;INDICATE RESPONSE
+005062  1  60           I5:		RTS
+005063  1               ;
+005063  1  A5 55        CURCK:		LDA	HCP				;CHECK HORIZ CURSOR
+005065  1  C9 50        		CMP	#$50				;FOR >$4F
+005067  1  90 F9        		BCC	I5				;IF NOT
+005069  1  A9 C1        		LDA	#CUR80				;GO GET REAL VALUE
+00506B  1  20 03 50     		JSR	CINP
+00506E  1  4C 5A 50     		JMP	I0				;AND STORE IT (Y=0)
+005071  1               ;
+005071  1               ;
+005071  1               ;
+005071  1  38           CMD: 		SEC 					;THIS CODE MUST NOT
+005072  1  B0 01        		BCS 	OUT 				;CROSS A PAGE BOUNDARY
+005074  1  18           OUTPUT:		CLC 					;CMD FLAG=0 FOR CHAR
+005075  1  A0 00        OUT: 		LDY 	#00
+005077  1  20 A1 50     		JSR 	SEND				;SEND START BIT
+00507A  1               
+00507A  1  A2 08        		LDX 	#08				;SETUP BIT COUNT OF 9
+00507C  1  EA           		NOP
+00507D  1  EA           		NOP
+00507E  1  EA           		NOP					;2+2+2+2=8
+00507F  1  6A           OUT0:		ROR 	A				;PUT BIT INTO CARRY
+005080  1  B0 09        		BCS 	HI
+005082  1  90 00        		BCC 	LO				;2+3=5 CYCLES TO LO
+005084  1  A0 00        LO:		LDY 	#00				;5+2 CYCLES TO JSR
+005086  1  20 A1 50     		JSR 	SEND				;SEND A 0
+005089  1  90 08        		BCC 	OUT1				;3 CYCLES
+00508B  1  AC 07 54     HI:		LDY 	OUTMS				;3+4 CYCLES TO JSR
+00508E  1  20 A1 50     		JSR 	SEND				;SEND A 1
+005091  1  B0 00        		BCS 	OUT1				;3 CYCLES
+005093  1  CA           OUT1:		DEX					;NEXT BIT 2 CYC
+005094  1  10 E9        		BPL 	OUT0				;MORE 3 OR 2 CYC
+005096  1  30 00        		BMI 	OUT2				;SEND STOP BIT 3 CYC
+005098  1  AC 07 54     OUT2:		LDY 	OUTMS				;SEND A 1
+00509B  1  D0 00        		BNE 	OUT3
+00509D  1  20 A1 50     OUT3:		JSR 	SEND				;2+3+4+3=12
+0050A0  1  60           		RTS
+0050A1  1               
+0050A1  1  8C 00 D3     SEND:		STY 	PORTA				;OUTPUT BIT
+0050A4  1  A0 0C        		LDY 	#12				;TIMER FOR 15.7KB
+0050A6  1  88           S1:		DEY
+0050A7  1  D0 FD        		BNE 	S1				;5*Y-1 CYCLES
+0050A9  1  F0 00        		BEQ 	S2				;3
+0050AB  1  EA           S2:		NOP
+0050AC  1  EA           		NOP
+0050AD  1  EA           		NOP
+0050AE  1  EA           		NOP					;2+2+2+2=8
+0050AF  1  60           S3:		RTS					;6 CYCLES
+0050B0  1               ;============================================================
+0050B0  1               ;
+0050B0  1               ;============================================================
+0050B0  1  20 B4 53     start:		jsr	CINIT
+0050B3  1  20 52 53     		jsr 	EOPEN
+0050B6  1  A9 00        		lda	#0
+0050B8  1  8D FE 02     		sta	LISTF
+0050BB  1  A9 7D        		lda	#CLS
+0050BD  1  20 AF 52     		jsr	WRITE
+0050C0  1               
+0050C0  1  A9 00        		LDA	#0
+0050C2  1  8D 0F 54     		sta	escflag
+0050C5  1  8D 11 54     		sta	iflag
+0050C8  1  8D 10 54     		sta	dflag
+0050CB  1  8D 13 54     		STA	cxflag
+0050CE  1  8D 14 54     		STA	cyflag
+0050D1  1               
+0050D1  1  20 7F 52     loop:		jsr	KCALL
+0050D4  1  C9 58        		CMP	#'X'
+0050D6  1  F0 0C        		BEQ	return
+0050D8  1  20 E5 50     		JSR	decode
+0050DB  1               
+0050DB  1  0D 12 54     		ORA	hibit
+0050DE  1  20 AF 52     		jsr	WRITE
+0050E1  1  4C D1 50     		jmp	loop
+0050E4  1               
+0050E4  1  60           return:		rts
+0050E5  1               
+0050E5  1               ;
+0050E5  1               ;
+0050E5  1               ;
+0050E5  1               decode:		;and	#127				;clear bit 7
+0050E5  1  AE 0F 54     		ldx	escflag
+0050E8  1  F0 03        		BEQ	decode1
+0050EA  1  4C 8B 51     		jmp	decodeesc
+0050ED  1  AE 13 54     decode1:	LDX	cxflag
+0050F0  1  F0 03        		BEQ	decode2
+0050F2  1  4C CB 51     		jmp	getcsrx
+0050F5  1  AE 14 54     decode2:	LDX	cyflag
+0050F8  1  F0 03        		BEQ	decode3
+0050FA  1  4C DE 51     		jmp	getcsry
+0050FD  1  C9 20        decode3:	cmp	#32				;<space = control char?
+0050FF  1  90 05        		bcc	ctrl
+005101  1  C9 9B        		CMP	#EOL
+005103  1  F0 56        		BEQ	csrret
+005105  1  60           		rts
+005106  1               
+005106  1               
+005106  1  AE 3E 52     ctrl:		ldx	ctrlnum
+005109  1  DD 3F 52     ctrl1:		cmp	ctrltab,x
+00510C  1  F0 06        		BEQ	ctrlfound
+00510E  1  CA           		dex
+00510F  1  10 F8        		BPL	ctrl1
+005111  1  4C 60 51     		jmp	retloop
+005114  1               
+005114  1  A8           ctrlfound:	tay
+005115  1  8A           		txa
+005116  1  0A           		asl
+005117  1  AA           		tax
+005118  1  BD 4A 52     		LDA	ctrladr+1,x
+00511B  1  48           		pha
+00511C  1  BD 49 52     		LDA	ctrladr,x
+00511F  1  48           		pha
+005120  1  60           		rts
+005121  1               
+005121  1               
+005121  1  A9 1E        csrleft:	lda	#CLEFT
+005123  1  60           		rts
+005124  1               
+005124  1  A9 7F        tabul:		LDA	#TABU
+005126  1  60           		rts
+005127  1               
+005127  1  A5 54        csrdown:	LDA	VCP
+005129  1  C9 17        		cmp	#CSRYMAX
+00512B  1  90 12        		BCC	csrdown1
+00512D  1  A5 55        		LDA	HCP
+00512F  1  48           		pha
+005130  1  A9 9B        		LDA	#EOL
+005132  1  20 AF 52     		JSR	WRITE
+005135  1  68           		pla
+005136  1  85 55        		STA	HCP
+005138  1  20 71 50     		JSR	CMD
+00513B  1  4C 60 51     		jmp	retloop
+00513E  1               
+00513E  1  60           		rts
+00513F  1  EE 01 54     csrdown1:	inc	CSRY
+005142  1  A9 1D        		LDA	#CDOWN
+005144  1  60           		rts
+005145  1               
+005145  1  AD 01 54     csrup:		LDA	CSRY
+005148  1  D0 08        		BNE	csrup1
+00514A  1  A5 55        		LDA	HCP
+00514C  1  48           		pha
+00514D  1  A9 9D        		LDA	#INSLIN
+00514F  1  4C F2 51     		jmp	insline1
+005152  1               
+005152  1  CE 01 54     csrup1:		DEC	CSRY
+005155  1  A9 1C        		LDA	#CUP
+005157  1  60           		rts
+005158  1               
+005158  1  A9 1F        csrright:	LDA	#CRIGHT
+00515A  1  60           		rts
+00515B  1               
+00515B  1  A9 00        csrret:		LDA	#0
+00515D  1  20 71 50     		JSR	CMD
+005160  1  68           retloop:	pla
+005161  1  68           		pla
+005162  1  4C D1 50     		jmp	loop
+005165  1               
+005165  1  A9 00        clrscr:		LDA	#0
+005167  1  8D 01 54     		STA	CSRY
+00516A  1  A9 7D        		LDA	#CLS
+00516C  1  60           		rts
+00516D  1               
+00516D  1  A9 01        escape:		lda	#1
+00516F  1  8D 0F 54     		sta	escflag
+005172  1  D0 EC        		BNE	retloop
+005174  1               
+005174  1  A9 00        csrhome:	LDA	#0
+005176  1  8D 01 54     		STA	CSRY
+005179  1  20 71 50     		JSR	CMD
+00517C  1  A9 80        		LDA	#$80
+00517E  1  20 71 50     		JSR	CMD
+005181  1  4C 5B 51     		jmp	csrret
+005184  1               
+005184  1  A9 01        direct:		LDA	#1
+005186  1  8D 10 54     		STA	dflag
+005189  1  D0 D5        		BNE	retloop
+00518B  1               
+00518B  1               ;
+00518B  1               ;
+00518B  1               ;
+00518B  1  A2 00        decodeesc:	LDX	#0
+00518D  1  8E 0F 54     		STX	escflag
+005190  1  AE 5D 52     		ldx	escnum
+005193  1  DD 5E 52     decesc1:	cmp	esctab,x
+005196  1  F0 05        		BEQ	escfound
+005198  1  CA           		dex
+005199  1  10 F8        		BPL	decesc1
+00519B  1  30 C3        		BMI	retloop
+00519D  1               
+00519D  1  A8           escfound:	tay
+00519E  1  8A           		txa
+00519F  1  0A           		asl
+0051A0  1  AA           		tax
+0051A1  1  BD 6A 52     		LDA	escadr+1,x
+0051A4  1  48           		pha
+0051A5  1  BD 69 52     		LDA	escadr,x
+0051A8  1  48           		pha
+0051A9  1  60           		rts
+0051AA  1               
+0051AA  1  A9 00        disattr:	lda	#0
+0051AC  1  8D 12 54     disattr1:	sta	hibit
+0051AF  1  4C 60 51     		jmp	retloop
+0051B2  1               
+0051B2  1  A9 80        enaattr:	lda	#$80
+0051B4  1  D0 F6        		BNE	disattr1
+0051B6  1               
+0051B6  1  A9 FF        setinv:		LDA	#$FF
+0051B8  1  20 AF 52     		JSR	WRITE
+0051BB  1  A9 F5        		LDA	#$F5
+0051BD  1  20 71 50     		JSR	CMD
+0051C0  1  4C 60 51     		jmp	retloop
+0051C3  1               
+0051C3  1               
+0051C3  1  A9 01        csrpos:		LDA	#1
+0051C5  1  8D 13 54     		sta	cxflag
+0051C8  1  4C 60 51     		jmp	retloop
+0051CB  1               
+0051CB  1  29 DF        getcsrx:	AND	#%11011111
+0051CD  1  09 80        		ORA	#128
+0051CF  1  20 71 50     		JSR	CMD
+0051D2  1  A2 00        		LDX	#0
+0051D4  1  8E 13 54     		STX	cxflag
+0051D7  1  E8           		inx
+0051D8  1  8E 14 54     		STX	cyflag
+0051DB  1  4C 60 51     		jmp	retloop
+0051DE  1               
+0051DE  1  29 DF        getcsry:	AND	#%11011111
+0051E0  1  09 80        		ORA	#128
+0051E2  1  20 71 50     		JSR	CMD
+0051E5  1  A2 00        		LDX	#0
+0051E7  1  8E 14 54     		STX	cyflag
+0051EA  1  4C 60 51     		jmp	retloop
+0051ED  1               
+0051ED  1               
+0051ED  1  A5 55        insline:	LDA	HCP
+0051EF  1  48           		pha
+0051F0  1  A9 9D        		LDA	#INSLIN
+0051F2  1  20 AF 52     insline1:	JSR	WRITE
+0051F5  1  68           insline2:	pla
+0051F6  1  85 55        		STA	HCP
+0051F8  1  20 71 50     		JSR	CMD
+0051FB  1  4C 60 51     		jmp	retloop
+0051FE  1               
+0051FE  1  A9 FF        inschar:	LDA	#INSCHR
+005200  1  60           		rts
+005201  1               
+005201  1  A5 55        delline:	LDA	HCP
+005203  1  48           		pha
+005204  1  A9 9C        		LDA	#DELIN
+005206  1  20 AF 52     		JSR	WRITE
+005209  1  4C F2 51     		jmp	insline1
+00520C  1               
+00520C  1  A9 FE        delchar:	lda	#DELCHR
+00520E  1  60           		rts
+00520F  1               
+00520F  1  A5 55        clrline:	LDA	HCP
+005211  1  48           		PHA
+005212  1  A9 20        clrline2:	LDA	#32
+005214  1  20 AF 52     		JSR	WRITE
+005217  1  E6 55        		inc	HCP
+005219  1  A5 55        		LDA	HCP
+00521B  1  C9 50        		cmp	#80
+00521D  1  90 F3        		BCC	clrline2
+00521F  1  B0 D4        clrline1:	bcs	insline2
+005221  1               
+005221  1  38           clrend:		sec
+005222  1  A5 54        		LDA	VCP
+005224  1  E9 17        		SBC	#23
+005226  1  F0 E7        		BEQ	clrline
+005228  1               
+005228  1  8D 15 54     		STA	cnt
+00522B  1  A5 55        		LDA	HCP
+00522D  1  48           		pha
+00522E  1  A9 9C        clrend1:	LDA	#DELIN
+005230  1  20 AF 52     		JSR	WRITE
+005233  1  CE 15 54     		DEC	cnt
+005236  1  D0 F6        		BNE	clrend1
+005238  1  68           		pla
+005239  1  85 55        		STA	HCP
+00523B  1  4C 0F 52     		jmp	clrline
+00523E  1               
+00523E  1               
+00523E  1  09           ctrlnum:	.byte	9
+00523F  1  08 09 0A 0B  ctrltab:	.byte	8,9,10,11,12,13,26,27,30,31
+005243  1  0C 0D 1A 1B  
+005247  1  1E 1F        
+005249  1  20 51 23 51  ctrladr:	.word	csrleft-1, tabul-1, csrdown-1, csrup-1
+00524D  1  26 51 44 51  
+005251  1  57 51 5A 51  		.word	csrright-1, csrret-1, clrscr-1, escape-1
+005255  1  64 51 6C 51  
+005259  1  73 51 83 51  		.word	csrhome-1, direct-1
+00525D  1               
+00525D  1  0A           escnum:		.BYTE	10
+00525E  1  28 29 2A 37  esctab:		.byte	"()*7=EQRWTY"
+005262  1  3D 45 51 52  
+005266  1  57 54 59     
+005269  1  A9 51 B1 51  escadr:		.word	disattr-1, enaattr-1
+00526D  1  64 51 B5 51  		.word	clrscr-1, setinv-1, csrpos-1, insline-1
+005271  1  C2 51 EC 51  
+005275  1  FD 51 00 52  		.word	inschar-1, delline-1, delchar-1, clrline-1
+005279  1  0B 52 0E 52  
+00527D  1  20 52        		.word	clrend-1
+00527F  1               ;============================================================
+00527F  1               ;
+00527F  1               ;============================================================
+00527F  1  AD 25 E4     KCALL:		LDA	$E425
+005282  1  48           		PHA
+005283  1  AD 24 E4     		LDA	$E424
+005286  1  48           		PHA
+005287  1  60           		RTS
+005288  1               
+005288  1  BD 1C 54     FESUB: 		LDA	FETAB,X
+00528B  1  8D 2F 02     		STA	SDMCTL
+00528E  1  8D 00 D4     		STA	DMACTL
+005291  1  BD 1D 54     		LDA	FETAB+1,X
+005294  1  85 54        		STA	VCP
+005296  1  BD 1E 54     		LDA	FETAB+2,X
+005299  1  85 55        		STA	HCP
+00529B  1  85 52        		STA	LMARGN
+00529D  1  BD 1F 54     		LDA	FETAB+3,X
+0052A0  1  85 53        		STA	RMARGN
+0052A2  1  BD 20 54     		LDA	FETAB+4,X
+0052A5  1  8D D9 02     		STA	KEYDEL
+0052A8  1  BD 21 54     		LDA	FETAB+5,X
+0052AB  1  8D DA 02     		STA	KEYREP
+0052AE  1  60           		RTS
+0052AF  1               
+0052AF  1               
+0052AF  1  AC FF 02     WRITE:		LDY	SFLAG 				;CHECK CNTL 1
+0052B2  1  D0 FB        		BNE	WRITE 				;IF ON
+0052B4  1  20 EA 53     		JSR	DISAB
+0052B7  1  AC FC 53     		LDY	DEV 				;ARE WE SCREEN?
+0052BA  1  F0 0C        		BEQ	WR2 				;YES
+0052BC  1  48           		PHA
+0052BD  1  A9 00        		LDA	#00
+0052BF  1  8D FC 53     		STA	DEV
+0052C2  1  A9 D2        		LDA	#SCR80
+0052C4  1  20 71 50     		JSR	CMD
+0052C7  1  68           		PLA
+0052C8  1  AC FE 02     WR2:		LDY	LISTF 				;CHECK LIST FLAG
+0052CB  1  CC FE 53     		CPY	LISTS
+0052CE  1  F0 0F        		BEQ	WR3
+0052D0  1  8C FE 53     		STY	LISTS 				;SAVE NEW VALUE
+0052D3  1  48           		PHA
+0052D4  1  98           		TYA
+0052D5  1  F0 02        		BEQ	WR25
+0052D7  1  A9 01        		LDA	#01 				;FORCE LSB
+0052D9  1  09 D0        WR25:		ORA	#LIS80
+0052DB  1  20 71 50     		JSR	CMD 				;SEND NEW VALUE
+0052DE  1  68           		PLA
+0052DF  1               WR3:		;JSR ALIGN 				;SET PARMS
+0052DF  1  AC F4 02     		LDY	 CHBAS 				;CHECK CHAR SET
+0052E2  1  CC 0B 54     		CPY	 CHSH
+0052E5  1  F0 1D        		BEQ	 WR5
+0052E7  1  C0 E0        		CPY	 #$E0
+0052E9  1  D0 0D        		BNE	 WR4
+0052EB  1  8C 0B 54     		STY	 CHSH
+0052EE  1  48           		PHA
+0052EF  1  A9 D4        		LDA	 #GRF80
+0052F1  1  20 71 50     WR35:		JSR	 CMD
+0052F4  1  68           		PLA
+0052F5  1  4C 04 53     		JMP	 WR5
+0052F8  1  C0 CC        WR4:		CPY	 #$CC
+0052FA  1  D0 08        		BNE	 WR5
+0052FC  1  8C 0B 54     		STY	 CHSH
+0052FF  1  48           		PHA
+005300  1  A9 D5        		LDA	 #ICM80
+005302  1  D0 ED        		BNE	 WR35
+005304  1  AC F0 02     WR5:		LDY	 CRSINH 			;CHECK CURS FLAG
+005307  1  CC 00 54     		CPY	 CRSS
+00530A  1  F0 0F        		BEQ	 WR6
+00530C  1  8C 00 54     		STY	 CRSS
+00530F  1  48           		PHA
+005310  1  98           		TYA
+005311  1  F0 02        		BEQ	 WR55
+005313  1  A9 01        		LDA	 #01
+005315  1  49 D9        WR55:		EOR	 #CRS80 			;CURSOR ON/OFF
+005317  1  20 71 50     		JSR	 CMD
+00531A  1  68           		PLA
+00531B  1  20 74 50     WR6:		JSR	 OUTPUT 			;SEND CHAR
+00531E  1  AD FF 53     		LDA	 MODE 				;TEST FOR BURST
+005321  1  D0 09        		BNE	 WWAT 				;IF SO
+005323  1  20 06 50     		JSR	 INPUT 				;GET NEW CURSOR
+005326  1  20 63 50     		JSR	 CURCK 				;CHECK FOR X>$4F
+005329  1  4C F1 53     		JMP	 ENAB
+00532C  1  20 F1 53     WWAT: 		JSR	 ENAB 				;ENABLE INTS
+00532F  1  A0 19        		LDY	 #25					;OR SUCH
+005331  1  20 A6 50     		JSR	 S1
+005334  1  AD 00 D3     WW1: 		LDA	 PORTA
+005337  1  2D 06 54     		AND	 INMSK
+00533A  1  F0 F8        		BEQ	 WW1
+00533C  1  A0 01        WW2:		LDY	 #01
+00533E  1  60           		RTS
+00533F  1               
+00533F  1  20 EA 53     READ:		JSR	DISAB				;DISABLE IRQ INTS
+005342  1  A9 C0        		LDA	#GET80
+005344  1  20 03 50     		JSR	CINP				;REQUEST, GET CHAR
+005347  1  48           		PHA					;SAVE CHAR
+005348  1  20 06 50     		JSR	INPUT				;GET CURS
+00534B  1  20 63 50     		JSR	CURCK				;CHECK FOR X>$4F
+00534E  1  68           		PLA					;RESTORE CHAR
+00534F  1  4C F1 53     		JMP	ENAB
+005352  1               ;
+005352  1               
+005352  1               
+005352  1               ;
+005352  1               ;
+005352  1               ; set timing control pointer ($f6) to 4
+005352  1               ; set timing control register ($f7) to 168
+005352  1               ;
+005352  1  A2 00        EOPEN:		LDX	#00
+005354  1  20 88 52     		JSR	FESUB
+005357  1               ;		LDA	ICAX1Z 				;GET AUX 1
+005357  1               ;		AND	#32 				;CHECK CLEAR BIT
+005357  1               ;		BNE	C005 				;DONT DO RESET
+005357  1  A9 00        		LDA	#00
+005359  1  A2 06        		LDX	#06
+00535B  1  9D FA 53     C0035:		STA	VCS,X
+00535E  1  CA           		DEX
+00535F  1  10 FA        		BPL	C0035
+005361  1  A9 E0        		LDA	#$E0
+005363  1  8D 0B 54     		STA	CHSH
+005366  1  A9 4F        		LDA	#$4F
+005368  1  8D 0C 54     		STA	RMARGS
+00536B  1  8D 0D 54     		STA	COMPOS
+00536E  1  20 EA 53     		JSR	DISAB
+005371  1               
+005371  1  A9 C2        IO00:		LDA	#RST80				;RESET 80 COL
+005373  1  20 03 50     		JSR	CINP				;REQUEST, GET CHAR
+005376  1  90 05        		BCC	IO01				;GOT IT
+005378  1  20 C0 53     		JSR	JTOGL				;SWITCH PORTS
+00537B  1  D0 F4        		BNE	IO00				;DO IT AGAIN
+00537D  1  AD 14 D0     IO01:		LDA	PAL				;CHECK COMPUTER TYPE
+005380  1  29 0E        		AND	#$0E
+005382  1  D0 2D        		BNE	IOP1
+005384  1  A9 D7        		LDA 	#PAL80
+005386  1  20 71 50     		JSR	CMD				;SET 80 COL TO 50HZ
+005389  1               
+005389  1  A9 02        		LDA	#2
+00538B  1  20 AF 52     		JSR	WRITE
+00538E  1  A9 F6        		LDA	#TCP80
+005390  1  20 71 50     		JSR	CMD
+005393  1               
+005393  1  A9 54        		LDA	#84
+005395  1  20 AF 52     		JSR	WRITE
+005398  1  A9 F7        		LDA	#TCR80
+00539A  1  20 71 50     		JSR	CMD
+00539D  1               
+00539D  1  A9 63        		LDA	#84+15
+00539F  1  20 AF 52     		JSR	WRITE
+0053A2  1  A9 F7        		LDA	#TCR80
+0053A4  1  20 71 50     		JSR	CMD
+0053A7  1               
+0053A7  1  A9 A9        		LDA	#169
+0053A9  1  20 AF 52     		JSR	WRITE
+0053AC  1  A9 F7        		LDA	#TCR80
+0053AE  1  20 71 50     		JSR	CMD
+0053B1  1               
+0053B1  1  4C F1 53     IOP1:		JMP	ENAB
+0053B4  1               
+0053B4  1               ;
+0053B4  1               ;
+0053B4  1               ;
+0053B4  1  A9 01        CINIT:		lda	#1
+0053B6  1  8D FE 02     		sta	LISTF
+0053B9  1  A9 00        		LDA	#00
+0053BB  1  8D 08 54     		STA 	TOGGLE
+0053BE  1  F0 08        		BEQ	JINIT
+0053C0  1               
+0053C0  1  A9 01        JTOGL:		LDA	#01
+0053C2  1  4D 08 54     		EOR 	TOGGLE
+0053C5  1  8D 08 54     		STA 	TOGGLE
+0053C8  1  AE 08 54     JINIT:		LDX 	TOGGLE
+0053CB  1  BC 18 54     		LDY	INMST,X
+0053CE  1  8C 06 54     		STY	INMSK
+0053D1  1  BC 1A 54     		LDY	OUTMT,X
+0053D4  1  8C 07 54     		STY	OUTMS
+0053D7  1  A9 FF        		LDA	#$FF
+0053D9  1  8D 00 D3     		STA	PORTA
+0053DC  1  A2 38        		LDX	#$38
+0053DE  1  8E 02 D3     		STX	PACTL
+0053E1  1  8C 00 D3     		STY	PORTA
+0053E4  1  A2 3C        		LDX	#$3C
+0053E6  1  8E 02 D3     		STX	PACTL
+0053E9  1  60           		RTS
+0053EA  1               ;
+0053EA  1  A0 00        DISAB:		LDY	#00
+0053EC  1  8C 0E D4     		STY	NMIEN
+0053EF  1  78           		SEI
+0053F0  1  60           		RTS
+0053F1  1               ;
+0053F1  1  A0 C0        ENAB:		LDY	#$C0
+0053F3  1  8C 0E D4     		STY	NMIEN
+0053F6  1  58           		CLI
+0053F7  1  A0 01        EXIT:		LDY	#01
+0053F9  1  60           ERTS:		RTS
+0053FA  1               ;
+0053FA  1  00           VCS:		.BYTE	0
+0053FB  1  00           HCS:		.BYTE	0
+0053FC  1  00           DEV:		.BYTE	0
+0053FD  1  00           LMARGS:		.BYTE	0
+0053FE  1  00           LISTS:		.BYTE	0
+0053FF  1  00           MODE:		.BYTE	0
+005400  1  00           CRSS:		.BYTE	0
+005401  1  00           CSRY:		.BYTE	0
+005402  1               ;
+005402  1               ;
+005402  1  00           DATIN:		.BYTE	0
+005403  1  00           HCPS:		.BYTE	0
+005404  1  00           HCPE:		.BYTE	0
+005405  1  00           KSTAT:		.BYTE	0
+005406  1  00           INMSK:		.BYTE	0
+005407  1  00           OUTMS:		.BYTE	0
+005408  1  00           TOGGLE:		.BYTE	0
+005409  1  00           TIOCB:		.BYTE	0
+00540A  1  00           TCHAR:		.BYTE	0
+00540B  1               ;
+00540B  1  00           CHSH:		.BYTE	0
+00540C  1  00           RMARGS:		.BYTE	0
+00540D  1  00           COMPOS:		.BYTE	0
+00540E  1               ;
+00540E  1  00           char:		.BYTE	0
+00540F  1  00           escflag:	.byte	0
+005410  1  00           dflag:		.BYTE	0
+005411  1  00           iflag:		.BYTE	0
+005412  1  00           hibit:		.BYTE	0
+005413  1  00           cxflag:		.BYTE	0
+005414  1  00           cyflag:		.BYTE	0
+005415  1  00           cnt:		.BYTE	0
+005416  1  00           csrx:		.BYTE	0
+005417  1  00           csry:		.BYTE	0
+005418  1               
+005418  1  02 20        INMST:		.BYTE	02,$20
+00541A  1  01 10        OUTMT:		.BYTE	01,$10
+00541C  1               
+00541C  1  00 00 00 4F  FETAB:		.BYTE	0,0,0,$4F,24,3
+005420  1  18 03        
+005422  1  3E 00 02 27  		.BYTE	62,0,2,39,30,6
+005426  1  1E 06        
+005427  1               

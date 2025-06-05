@@ -4,12 +4,13 @@ set SRC=..\src
 set INC=..\inc
 set BIN=..\bin
 set RELBASE=..\release
-set REL=%RELBASE%\%PLATFORM%
+rem set REL=%RELBASE%\%PLATFORM%
+set REL=%RELBASE%
 set RES=..\res
 set COMMON=..\..\atari-common
 set MY65816=..\..\atari-my65816
 
 mkdir %RELBASE% > nul 2> nul
-rmdir /S /Q %REL% > nul 2> nul
-mkdir %REL%
+rem rmdir /S /Q %REL% > nul 2> nul
+rem mkdir %REL%
 

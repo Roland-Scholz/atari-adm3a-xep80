@@ -1,13 +1,26 @@
+		.org $5000
+
 ;
 ;CHAR =ATES
 ;
 LF	=	10
 CR	=	13
 ESC	=	$1B
+CUP	=	28
+CDOWN	=	29
+CLEFT	=	30	
+CRIGHT	=	31
 SPACE	=	$20
 CNTL	=	$5E
+TABU 	=	$7F
 CLS	=	$7D
 EOL	=	$9B
+DELIN	=	$9C
+INSLIN  =	$9D
+DELCHR  =	$FE
+INSCHR	=	$FF
+
+CSRYMAX	=	23
 ;
 ;80 COL COMMANDS
 ;
@@ -33,6 +46,9 @@ PAL80	=	$D7
 CRS80	=	$D9
 MCF80	=	$DB
 PNT80	=	$DD
+
+TCP80	=	$F6					;set timing control pointer
+TCR80	=	$F7					;set timing control register
 ;
 ;MEMORY EQUATES
 ;
@@ -69,16 +85,11 @@ WSYNC	=	$D40A
 VCOUNT	=	$D40B
 NMIEN	=	$D40E
 
-
-READ:		JSR	DISAB				;DISABLE IRQ INTS
-		LDA	#GET80
-		JSR	CINP				;REQUEST, GET CHAR
-		PHA					;SAVE CHAR
-		JSR	INPUT				;GET CURS
-		JSR	CURCK				;CHECK FOR X>$4F
-		PLA					;RESTORE CHAR
-		JMP	ENAB
 ;
+;
+;
+		jmp	start
+
 CINP:		JSR	CMD
 INPUT:		LDA	#00				;TIME CRITICAL CODE
 		TAX					;MUST NOT CROSS A
@@ -159,7 +170,7 @@ HI:		LDY 	OUTMS				;3+4 CYCLES TO JSR
 		JSR 	SEND				;SEND A 1
 		BCS 	OUT1				;3 CYCLES
 OUT1:		DEX					;NEXT BIT 2 CYC
-		BPL 	OUT				;MORE 3 OR 2 CYC
+		BPL 	OUT0				;MORE 3 OR 2 CYC
 		BMI 	OUT2				;SEND STOP BIT 3 CYC
 OUT2:		LDY 	OUTMS				;SEND A 1
 		BNE 	OUT3
@@ -176,11 +187,419 @@ S2:		NOP
 		NOP
 		NOP					;2+2+2+2=8
 S3:		RTS					;6 CYCLES
+;============================================================
+;
+;============================================================
+start:		jsr	CINIT
+		jsr 	EOPEN
+		lda	#0
+		sta	LISTF		
+		lda	#CLS
+		jsr	WRITE
+		
+		LDA	#0
+		sta	escflag
+		sta	iflag
+		sta	dflag
+		STA	cxflag
+		STA	cyflag
+
+loop:		jsr	KCALL
+		CMP	#'X'
+		BEQ	return
+		JSR	decode
+		
+		ORA	hibit
+		jsr	WRITE
+		jmp	loop
+
+return:		rts
+
+;
+;
+;		
+decode:		;and	#127				;clear bit 7
+		ldx	escflag
+		BEQ	decode1
+		jmp	decodeesc
+decode1:	LDX	cxflag
+		BEQ	decode2
+		jmp	getcsrx
+decode2:	LDX	cyflag
+		BEQ	decode3
+		jmp	getcsry
+decode3:	cmp	#32				;<space = control char?
+		bcc	ctrl
+		CMP	#EOL
+		BEQ	csrret
+		rts
+		
+		
+ctrl:		ldx	ctrlnum
+ctrl1:		cmp	ctrltab,x
+		BEQ	ctrlfound
+		dex
+		BPL	ctrl1
+		jmp	retloop
+
+ctrlfound:	tay
+		txa
+		asl
+		tax
+		LDA	ctrladr+1,x
+		pha
+		LDA	ctrladr,x
+		pha
+		rts
+		
+
+csrleft:	lda	#CLEFT
+		rts
+		
+tabul:		LDA	#TABU
+		rts
+		
+csrdown:	LDA	VCP
+		cmp	#CSRYMAX
+		BCC	csrdown1
+		LDA	HCP
+		pha
+		LDA	#EOL
+		JSR	WRITE
+		pla
+		STA	HCP
+		JSR	CMD
+		jmp	retloop
+		
+		rts
+csrdown1:	inc	CSRY
+		LDA	#CDOWN
+		rts
+		
+csrup:		LDA	CSRY
+		BNE	csrup1
+		LDA	HCP
+		pha
+		LDA	#INSLIN
+		jmp	insline1
+		
+csrup1:		DEC	CSRY
+		LDA	#CUP
+		rts
+		
+csrright:	LDA	#CRIGHT
+		rts
+			
+csrret:		LDA	#0
+		JSR	CMD
+retloop:	pla
+		pla
+		jmp	loop
+
+clrscr:		LDA	#0
+		STA	CSRY
+		LDA	#CLS
+		rts
+		
+escape:		lda	#1
+		sta	escflag
+		BNE	retloop
+		
+csrhome:	LDA	#0
+		STA	CSRY
+		JSR	CMD
+		LDA	#$80
+		JSR	CMD
+		jmp	csrret
+		
+direct:		LDA	#1
+		STA	dflag
+		BNE	retloop
+
+;
+;
+;
+decodeesc:	LDX	#0
+		STX	escflag
+		ldx	escnum
+decesc1:	cmp	esctab,x
+		BEQ	escfound
+		dex
+		BPL	decesc1
+		BMI	retloop
+
+escfound:	tay
+		txa
+		asl
+		tax
+		LDA	escadr+1,x
+		pha
+		LDA	escadr,x
+		pha
+		rts
+
+disattr:	lda	#0
+disattr1:	sta	hibit
+		jmp	retloop
+
+enaattr:	lda	#$80
+		BNE	disattr1
+
+setinv:		LDA	#$FF
+		JSR	WRITE
+		LDA	#$F5
+		JSR	CMD
+		jmp	retloop
+		
+
+csrpos:		LDA	#1
+		sta	cxflag
+		jmp	retloop
+
+getcsrx:	AND	#%11011111
+		ORA	#128
+		JSR	CMD
+		LDX	#0
+		STX	cxflag
+		inx
+		STX	cyflag
+		jmp	retloop
+
+getcsry:	AND	#%11011111
+		ORA	#128
+		JSR	CMD
+		LDX	#0
+		STX	cyflag
+		jmp	retloop
+
+
+insline:	LDA	HCP
+		pha
+		LDA	#INSLIN	
+insline1:	JSR	WRITE
+insline2:	pla
+		STA	HCP
+		JSR	CMD
+		jmp	retloop
+
+inschar:	LDA	#INSCHR
+		rts
+		
+delline:	LDA	HCP
+		pha
+		LDA	#DELIN
+		JSR	WRITE
+		jmp	insline1
+		
+delchar:	lda	#DELCHR
+		rts
+		
+clrline:	LDA	HCP
+		PHA
+clrline2:	LDA	#32
+		JSR	WRITE
+		inc	HCP
+		LDA	HCP
+		cmp	#80
+		BCC	clrline2
+clrline1:	bcs	insline2
+
+clrend:		sec
+		LDA	VCP
+		SBC	#23
+		BEQ	clrline
+		
+		STA	cnt
+		LDA	HCP
+		pha
+clrend1:	LDA	#DELIN
+		JSR	WRITE
+		DEC	cnt
+		BNE	clrend1
+		pla
+		STA	HCP
+		jmp	clrline
+
+
+ctrlnum:	.byte	9
+ctrltab:	.byte	8,9,10,11,12,13,26,27,30,31
+ctrladr:	.word	csrleft-1, tabul-1, csrdown-1, csrup-1
+		.word	csrright-1, csrret-1, clrscr-1, escape-1
+		.word	csrhome-1, direct-1
+		
+escnum:		.BYTE	10
+esctab:		.byte	"()*7=EQRWTY"
+escadr:		.word	disattr-1, enaattr-1
+		.word	clrscr-1, setinv-1, csrpos-1, insline-1
+		.word	inschar-1, delline-1, delchar-1, clrline-1
+		.word	clrend-1
+;============================================================
+;
+;============================================================
+KCALL:		LDA	$E425
+		PHA
+		LDA	$E424
+		PHA
+		RTS
+
+FESUB: 		LDA	FETAB,X
+		STA	SDMCTL
+		STA	DMACTL
+		LDA	FETAB+1,X
+		STA	VCP
+		LDA	FETAB+2,X
+		STA	HCP
+		STA	LMARGN
+		LDA	FETAB+3,X
+		STA	RMARGN
+		LDA	FETAB+4,X
+		STA	KEYDEL
+		LDA	FETAB+5,X
+		STA	KEYREP
+		RTS
+		
+
+WRITE:		LDY	SFLAG 				;CHECK CNTL 1
+		BNE	WRITE 				;IF ON
+		JSR	DISAB
+		LDY	DEV 				;ARE WE SCREEN?
+		BEQ	WR2 				;YES
+		PHA	
+		LDA	#00
+		STA	DEV
+		LDA	#SCR80
+		JSR	CMD
+		PLA	
+WR2:		LDY	LISTF 				;CHECK LIST FLAG
+		CPY	LISTS
+		BEQ	WR3
+		STY	LISTS 				;SAVE NEW VALUE
+		PHA	
+		TYA	
+		BEQ	WR25
+		LDA	#01 				;FORCE LSB
+WR25:		ORA	#LIS80
+		JSR	CMD 				;SEND NEW VALUE
+		PLA
+WR3:		;JSR ALIGN 				;SET PARMS
+		LDY	 CHBAS 				;CHECK CHAR SET
+		CPY	 CHSH
+		BEQ	 WR5
+		CPY	 #$E0
+		BNE	 WR4
+		STY	 CHSH
+		PHA	
+		LDA	 #GRF80
+WR35:		JSR	 CMD
+		PLA	
+		JMP	 WR5
+WR4:		CPY	 #$CC
+		BNE	 WR5
+		STY	 CHSH
+		PHA	
+		LDA	 #ICM80
+		BNE	 WR35
+WR5:		LDY	 CRSINH 			;CHECK CURS FLAG
+		CPY	 CRSS
+		BEQ	 WR6
+		STY	 CRSS
+		PHA	
+		TYA	
+		BEQ	 WR55
+		LDA	 #01
+WR55:		EOR	 #CRS80 			;CURSOR ON/OFF
+		JSR	 CMD
+		PLA	
+WR6:		JSR	 OUTPUT 			;SEND CHAR
+		LDA	 MODE 				;TEST FOR BURST
+		BNE	 WWAT 				;IF SO
+		JSR	 INPUT 				;GET NEW CURSOR
+		JSR	 CURCK 				;CHECK FOR X>$4F
+		JMP	 ENAB
+WWAT: 		JSR	 ENAB 				;ENABLE INTS
+		LDY	 #25					;OR SUCH
+		JSR	 S1
+WW1: 		LDA	 PORTA
+		AND	 INMSK
+		BEQ	 WW1
+WW2:		LDY	 #01
+		RTS
+
+READ:		JSR	DISAB				;DISABLE IRQ INTS
+		LDA	#GET80
+		JSR	CINP				;REQUEST, GET CHAR
+		PHA					;SAVE CHAR
+		JSR	INPUT				;GET CURS
+		JSR	CURCK				;CHECK FOR X>$4F
+		PLA					;RESTORE CHAR
+		JMP	ENAB
+;
+
 	
 ;	
+;
+; set timing control pointer ($f6) to 4
+; set timing control register ($f7) to 168
+;
+EOPEN:		LDX	#00
+		JSR	FESUB
+;		LDA	ICAX1Z 				;GET AUX 1
+;		AND	#32 				;CHECK CLEAR BIT
+;		BNE	C005 				;DONT DO RESET
+		LDA	#00
+		LDX	#06
+C0035:		STA	VCS,X
+		DEX	
+		BPL	C0035
+		LDA	#$E0
+		STA	CHSH
+		LDA	#$4F
+		STA	RMARGS
+		STA	COMPOS
+		JSR	DISAB
+
+IO00:		LDA	#RST80				;RESET 80 COL
+		JSR	CINP				;REQUEST, GET CHAR
+		BCC	IO01				;GOT IT
+		JSR	JTOGL				;SWITCH PORTS
+		BNE	IO00				;DO IT AGAIN
+IO01:		LDA	PAL				;CHECK COMPUTER TYPE
+		AND	#$0E
+		BNE	IOP1
+		LDA 	#PAL80
+		JSR	CMD				;SET 80 COL TO 50HZ
+		
+		LDA	#2
+		JSR	WRITE
+		LDA	#TCP80
+		JSR	CMD
+		
+		LDA	#84
+		JSR	WRITE
+		LDA	#TCR80
+		JSR	CMD
+
+		LDA	#84+15
+		JSR	WRITE
+		LDA	#TCR80
+		JSR	CMD
+		
+		LDA	#169
+		JSR	WRITE
+		LDA	#TCR80
+		JSR	CMD
+
+IOP1:		JMP	ENAB
+
 ;	
 ;	
 ;	
+CINIT:		lda	#1
+		sta	LISTF
+		LDA	#00
+		STA 	TOGGLE
+		BEQ	JINIT
+		
 JTOGL:		LDA	#01
 		EOR 	TOGGLE
 		STA 	TOGGLE
@@ -206,7 +625,7 @@ DISAB:		LDY	#00
 ENAB:		LDY	#$C0
 		STY	NMIEN
 		CLI
-EXIT:		LDY #01
+EXIT:		LDY	#01
 ERTS:		RTS
 ;
 VCS:		.BYTE	0
@@ -216,6 +635,7 @@ LMARGS:		.BYTE	0
 LISTS:		.BYTE	0
 MODE:		.BYTE	0
 CRSS:		.BYTE	0
+CSRY:		.BYTE	0
 ;
 ;	
 DATIN:		.BYTE	0
@@ -227,6 +647,24 @@ OUTMS:		.BYTE	0
 TOGGLE:		.BYTE	0
 TIOCB:		.BYTE	0
 TCHAR:		.BYTE	0
+;
+CHSH:		.BYTE	0
+RMARGS:		.BYTE	0
+COMPOS:		.BYTE	0
+;
+char:		.BYTE	0
+escflag:	.byte	0
+dflag:		.BYTE	0
+iflag:		.BYTE	0
+hibit:		.BYTE	0
+cxflag:		.BYTE	0
+cyflag:		.BYTE	0
+cnt:		.BYTE	0
+csrx:		.BYTE	0
+csry:		.BYTE	0
 	
 INMST:		.BYTE	02,$20
 OUTMT:		.BYTE	01,$10
+
+FETAB:		.BYTE	0,0,0,$4F,24,3
+		.BYTE	62,0,2,39,30,6
