@@ -1,5 +1,6 @@
-		.org $5000
+		.org $2000
 
+XEPSIO		= 1
 ;
 ;CHAR =ATES
 ;
@@ -12,14 +13,16 @@ CLEFT	=	30
 CRIGHT	=	31
 SPACE	=	$20
 CNTL	=	$5E
-TABU 	=	$7F
 CLS	=	$7D
+DELETE	=	$7E
+TABU 	=	$7F
 EOL	=	$9B
 DELIN	=	$9C
 INSLIN  =	$9D
 DELCHR  =	$FE
 INSCHR	=	$FF
 
+CSRXMAX	=	79
 CSRYMAX	=	23
 ;
 ;80 COL COMMANDS
@@ -52,6 +55,7 @@ TCR80	=	$F7					;set timing control register
 ;
 ;MEMORY EQUATES
 ;
+PTR	=	$0
 DOSINI	=	$0C
 ICDNOZ	=	$21
 ICCOMZ	=	$22
@@ -61,23 +65,31 @@ ICIDNO	=	$2E
 LMARGN	=	$52
 RMARGN	=	$53
 VCP	=	$54
+csry		=	VCP
+csrx		=	HCP
+
 HCP	=	$55
+SAVMSC	=	$58
+KEYDEF	=	$0079
 IN	=	$CC
+VBREAK	=	$0206
+VSERIN	=	$20A
+VSEROR	=	$20C
+VIMIRQ	=	$216
 CDTMV3	=	$21C
 SDMCTL	=	$22F
+BRKKY	=	$0236
 KEYDEL	=	$2D9
 KEYREP	=	$2DA
-DVSTAT	=	$2EA
+DVstaT	=	$2EA
 CRSINH	=	$2F0
 CHBAS	=	$2F4
+CH	=	$2FC
 LISTF	=	$2FE
 SFLAG	=	$2FF
 HATABS	=	$31A
 ICDNO	=	$341
-ICCOM	=	$342
 PAL	=	$D014
-IRQEN	=	$D20E
-SKSTAT	=	$D20F
 PORTA	=	$D300
 PACTL	=	$D302
 DMACTL	=	$D400
@@ -85,341 +97,828 @@ WSYNC	=	$D40A
 VCOUNT	=	$D40B
 NMIEN	=	$D40E
 
-;
-;
-;
-		jmp	start
-
-CINP:		JSR	CMD
-INPUT:		LDA	#00				;TIME CRITICAL CODE
-		TAX					;MUST NOT CROSS A
-		LDY	#31				;PAGE BOUNDARY
-		STA	DATIN
-IN0:		LDA 	PORTA 				;4
-		AND	INMSK 				;4
-		BEQ	IN01				;3 IF A 0, 2 IF NOT
-		DEX
-		BNE	IN0
-		DEY					;TIMEOUT LOOPS
-		BNE	IN0
-		SEC					;NO RESPONSE
-		RTS
-IN01:		LDX	#08
-		LDY	#12				;2
-IN1:		DEY
-		BNE	IN1				;5*Y-1
-		NOP					;2
-IN10:		LDY	#15				;2 MAIN DLY COUNT
-IN2:		DEY
-		BNE	IN2				;5*Y-1
-		LDA	PORTA				;4 GET BYTE
-		AND	INMSK				;4 GET BIT
-		CLC					;2
-		BEQ	IN25				;0=3,1=2
-		SEC					;1=2
-IN25:		BCC	IN26				;0=3,1=2
-IN26:		DEX					;2 DEC COUNT
-		BMI	IN3				;2 (3 DONE)
-		ROR	DATIN				;6 SHIFT IN BIT
-		BCC	IN10				;3 ALWAYS
-IN3:		LDY	#15				;DELAY 1/2 BIT
-IN33:		DEY
-		BNE	IN33
-		LDA	DATIN				;GET CHAR (Y=0)
-		BCC	I5				;RETURN IF CHAR
-		BPL	I0				;HORIZ WITH NO VERT
-		AND	#$7F				;CLEAR UPPER FLAG
-		CMP	#$51				;TEST HORIZ/VERT
-		BCC	I00 				;HORIZONTAL
-		AND	#$1F				;CLEAR MID FLAG
-		BCS	I01				;SAVE VERT
-I00:		JSR	I0				;SAVE HORIZ
-		BCC	INPUT				;GET VERT
-I0:		INY					;OFFSET FOR HORIZ
-I01:		STA	VCP,Y				;CURS POSITION
-		STA	VCS,Y				;CURS SHADOW
-		CLC					;INDICATE RESPONSE
-I5:		RTS
-;
-CURCK:		LDA	HCP				;CHECK HORIZ CURSOR
-		CMP	#$50				;FOR >$4F
-		BCC	I5				;IF NOT
-		LDA	#CUR80				;GO GET REAL VALUE
-		JSR	CINP
-		JMP	I0				;AND STORE IT (Y=0)
-;
-;
-;
-CMD: 		SEC 					;THIS CODE MUST NOT
-		BCS 	OUT 				;CROSS A PAGE BOUNDARY
-OUTPUT:		CLC 					;CMD FLAG=0 FOR CHAR
-OUT: 		LDY 	#00
-		JSR 	SEND				;SEND START BIT
-	
-		LDX 	#08				;SETUP BIT COUNT OF 9
-		NOP	
-		NOP	
-		NOP					;2+2+2+2=8
-OUT0:		ROR 	A				;PUT BIT INTO CARRY
-		BCS 	HI
-		BCC 	LO				;2+3=5 CYCLES TO LO
-LO:		LDY 	#00				;5+2 CYCLES TO JSR
-		JSR 	SEND				;SEND A 0
-		BCC 	OUT1				;3 CYCLES
-HI:		LDY 	OUTMS				;3+4 CYCLES TO JSR
-		JSR 	SEND				;SEND A 1
-		BCS 	OUT1				;3 CYCLES
-OUT1:		DEX					;NEXT BIT 2 CYC
-		BPL 	OUT0				;MORE 3 OR 2 CYC
-		BMI 	OUT2				;SEND STOP BIT 3 CYC
-OUT2:		LDY 	OUTMS				;SEND A 1
-		BNE 	OUT3
-OUT3:		JSR 	SEND				;2+3+4+3=12
-		RTS	
-	
-SEND:		STY 	PORTA				;OUTPUT BIT
-		LDY 	#12				;TIMER FOR 15.7KB
-S1:		DEY	
-		BNE 	S1				;5*Y-1 CYCLES
-		BEQ 	S2				;3
-S2:		NOP
-		NOP
-		NOP
-		NOP					;2+2+2+2=8
-S3:		RTS					;6 CYCLES
-;============================================================
-;
-;============================================================
-start:		jsr	CINIT
-		jsr 	EOPEN
-		lda	#0
-		sta	LISTF		
-		lda	#CLS
-		jsr	WRITE
+IMBRK	=	$80
+IMKBD	=	$40
+IMRECV	=	$20
+IMSEND	=	$10
+IMSCPL	=	$08
 		
-		LDA	#0
-		sta	escflag
-		sta	iflag
-		sta	dflag
-		STA	cxflag
-		STA	cyflag
-
-loop:		jsr	KCALL
-		CMP	#'X'
-		BEQ	return
-		JSR	decode
+RMBRK	=	$7F
+RMKEY	=	$BF
+RMRECV	=	$DF
+RMSEND	=	$EF
 		
-		ORA	hibit
-		jsr	WRITE
-		jmp	loop
+MSKKEY	=	$40
+MSKRECV	=	$20
+MSKSEND	=	$10
+		
+SKSEND	=	$23
+SKRECV	=	$13
+		
+POKMSK	=	$10
+	
+CONSOL	=	$D01F	;console switches and speaker control
+	
+AUDF1	=	$D200
+AUDC1	=	$D201
+AUDF2	=	$D202
+AUDC2	=	$D203
+AUDF3	=	$D204
+AUDC3	=	$D205
+AUDF4	=	$D206
+AUDC4	=	$D207
+AUDCTL	=	$D208
+KBCODE	=	$D209
+SKRES	=	$D20A
+SERIN	=	$D20D
+SEROUT	=	$D20D
+IRQEN	=	$D20E
+IRQST	=	$D20E
+SKCTL	=	$D20F
+SKSTAT	=	$D20F
+		
+COLDSV	=	$E477
 
-return:		rts
+ATACHR	=	$2FB
+KBCODES	=	$2FC
+
+
+DDEVIC	=	$300
+DUNIT	=	$301
+DCOMND	=	$302
+DSTATS	=	$303
+DBUFLO	=	$304
+DBUFHI	=	$305
+DTIMLO	=	$306
+DBYTLO	=	$308
+DBYTHI	=	$309
+DAUX1	=	$30A
+DAUX2	=	$30B
+		
+DISKV	=	$E453
+CIOV	=	$E456
+SIOV	=	$E459
+COPEN	=	03
+CGETR	=	7
+CPTXTR	=	9
+CPUTR	=	11
+CCLOSE	=	12
+		
+CBAUD	=	36
+CTRANS	=	38
+CCONCUR	=	40
+		
+ICCOM	=	$342
+ICBADR	=	$344
+ICBLEN	=	$348
+ICAUX1	=	$34A
+ICAUX2	=	$34B
+
+;============================================================
+; time-dependent code (cycle-counting) in one page!
+;============================================================
+asm3axep:	jmp	start				;jump to main loop
+		
+OUTPUT:		jmp	XOUTPUT
+CMD:		jmp	XCMD
+CINP:		jsr	CMD
+INPUT:		lda	#00				;TIME CRITICAL CODE
+		tax					;MUST NOT CROSS A
+		ldy	#31				;PAGE BOUNDARY
+		sta	DATIN
+IN0:		lda 	PORTA 				;4
+		and	INMSK 				;4
+		beq	IN01				;3 IF A 0, 2 IF NOT
+		dex
+		bne	IN0
+		dey					;TIMEOUT LOOPS
+		bne	IN0
+		sec					;NO RESPONSE
+		rts
+IN01:		ldx	#08
+		ldy	#12				;2
+IN1:		dey
+		bne	IN1				;5*Y-1
+		nop					;2
+IN10:		ldy	#15				;2 MAIN DLY COUNT
+IN2:		dey
+		bne	IN2				;5*Y-1
+		lda	PORTA				;4 GET BYTE
+		and	INMSK				;4 GET BIT
+		clc					;2
+		beq	IN25				;0=3,1=2
+		sec					;1=2
+IN25:		bcc	IN26				;0=3,1=2
+IN26:		dex					;2 DEC COUNT
+		bmi	IN3				;2 (3 DONE)
+		ror	DATIN				;6 SHIFT IN BIT
+		bcc	IN10				;3 ALWAYS
+IN3:		ldy	#15				;DELAY 1/2 BIT
+IN33:		dey
+		bne	IN33
+		lda	DATIN				;GET CHAR (Y=0)
+		bcc	I5				;RETURN IF CHAR
+		bpl	I0				;HORIZ WITH NO VERT
+		and	#$7F				;CLEAR UPPER FLAG
+		cmp	#$51				;TEST HORIZ/VERT
+		bcc	I00 				;HORIZONTAL
+		and	#$1F				;CLEAR MID FLAG
+		bcs	I01				;SAVE VERT
+I00:		jsr	I0				;SAVE HORIZ
+		bcc	INPUT				;GET VERT
+I0:		iny					;OFFSET FOR HORIZ
+I01:		sta	VCP,Y				;CURS POSITION
+;		sta	VCS,Y				;CURS SHADOW
+		clc					;INDICATE RESPONSE
+I5:		rts
+
 
 ;
-;
-;		
-decode:		;and	#127				;clear bit 7
-		ldx	escflag
-		BEQ	decode1
-		jmp	decodeesc
-decode1:	LDX	cxflag
-		BEQ	decode2
-		jmp	getcsrx
-decode2:	LDX	cyflag
-		BEQ	decode3
-		jmp	getcsry
-decode3:	cmp	#32				;<space = control char?
-		bcc	ctrl
-		CMP	#EOL
-		BEQ	csrret
+XCMD: 		sec 					;THIS CODE MUST NOT
+		bcs 	OUT 				;CROSS A PAGE BOUNDARY
+XOUTPUT:	clc 					;CMD FLAG=0 FOR CHAR	
+OUT: 		ldy 	#00
+
+		jsr	DISAB
+		jsr 	SEND				;SEND staRT BIT
+	
+		ldx 	#08				;SETUP BIT COUNT OF 9
+		nop	
+		nop	
+		nop					;2+2+2+2=8
+OUT0:		ror 	A				;2 PUT BIT INTO CARRY
+		bcs 	HI
+		bcc 	LO				;2+3=5 CYCLES TO LO
+LO:		ldy 	#00				;5+2 CYCLES TO JSR
+		jsr 	SEND				;SEND A 0
+		bcc 	OUT1				;3 CYCLES
+HI:		ldy 	OUTMS				;3+4 CYCLES TO JSR
+		jsr 	SEND				;SEND A 1
+		bcs 	OUT1				;3 CYCLES
+OUT1:		dex					;NEXT BIT 2 CYC
+		bpl 	OUT0				;MORE 3 OR 2 CYC
+		bmi 	OUT2				;SEND STOP BIT 3 CYC
+OUT2:		ldy 	OUTMS				;SEND A 1
+		bne 	OUT3
+OUT3:		jsr 	SEND				;2+3+4+3=12
+
+		jmp	ENAB
+	
+	
+SEND:		sty 	PORTA				;OUTPUT BIT
+		ldy 	#12				;TIMER FOR 15.7KB
+S1:		dey	
+		bne 	S1				;5*Y-1 CYCLES
+		beq 	S2				;3
+S2:		nop
+		nop
+		nop
+		nop					;2+2+2+2=8
+S3:		rts					;6 CYCLES
+
+
+
+
+siocmd: 	sec 					;THIS CODE MUST NOT
+		bcs 	SOUT 				;CROSS A PAGE BOUNDARY
+sioout:		clc 					;CMD FLAG=0 FOR CHAR
+SOUT: 		ldy 	#$3c				;1, will be inverted, hence 0
+
+		jsr	DISAB
+		jsr 	SIOSEND				;SEND staRT BIT
+	
+		ldx 	#08				;SETUP BIT COUNT OF 9
+		nop	
+		nop	
+		nop					;2+2+2+2=8
+SOUT0:		ror 	A				;2 PUT BIT INTO CARRY
+		bcs 	SHI				;3
+		bcc 	SLO				;2+3=5 CYCLES TO LO
+SLO:		ldy 	#$3c				;5+2 CYCLES TO JSR
+		jsr 	SIOSEND				;6 + 82 SEND A 0
+		bcc 	SOUT1				;3 CYCLES
+SHI:		ldy 	#$34				;2 SOUTMS		;3+4 CYCLES TO JSR
+		jsr 	SIOSEND				;6 + 82 SEND A 1
+		bcs 	SOUT1				;3 CYCLES
+SOUT1:		dex					;2 NEXT BIT 2 CYC
+		bpl 	SOUT0				;3 MORE 3 OR 2 CYC
+		bmi 	SOUT2				;SEND STOP BIT 3 CYC
+SOUT2:		ldy 	#$34				;SOUTMS		;SEND A 1
+		bne 	SOUT3
+SOUT3:		jsr 	SIOSEND				;2+3+4+3=12
+
+		jmp	ENAB
+	
+	
+SIOSEND:	sty 	PACTL				;4 OUTPUT BIT
+		ldy 	#12				;2 TIMER FOR 15.7KB
+SIOS1:		dey	
+		bne 	SIOS1				;5*Y-1 CYCLES
+		beq 	SIOS2				;3
+SIOS2:		nop
+		nop
+		nop
+		nop					;2+2+2+2=8
+SIOS3:		rts					;6 CYCLES, = 82
+
+;============================================================
+; bittime, wait some time
+;============================================================
+bittime:	ldx	#11				;2
+bittime1:	dex					;x * (2+3) = 11*5 = 55
+		bne	bittime1
+		rts					;6, 8+55=63
+
+;============================================================
+; SIO XEP80 input routine
+;============================================================
+siocinp:	jsr	siocmd
+sioinput:	lda	#$34				;wait for low-edge
+		sta	PACTL
+		ldy	#31
+		ldx	#0
+		
+sioin1:		lda	PACTL
+		bmi	sioin2				;got low-edge
+		dex
+		bne	sioin1
+		dey
+		bne	sioin1
+		sec
 		rts
 		
+sioin2:		lda	PORTA				;4 reset IRQA1 bit
 		
-ctrl:		ldx	ctrlnum
-ctrl1:		cmp	ctrltab,x
-		BEQ	ctrlfound
+		lda	#$36				;2 set rising edge detect
+		sta	PACTL				;4
+		jsr	bittime				;6
+
+		ldy	#9				;input 9 bits
+		
+sioin3:		jsr	bittime				;6 + 63 = 69
+		lda	PACTL				;3
+		bmi	sioin4				;3 or 2 = 75
+
+		eor	#2				;2
+		lsr					;2
+		lsr					;2
+		ror	DATIN				;6 shiftin 0
+		lda	$0				;3
+		nop
+		nop
+		nop					;9 = 3 + 3*2
+		jmp	sioin5				;3
+		
+sioin4:		lsr					;2 put edge-detect in carry
+		lsr					;2
+		ror	DATIN				;6 shift in datin
+		lda	PORTA				;4 reset IRQA bit
+		lda	PACTL				;4 check other edge
+		eor	#2				;2
+		sta	PACTL				;4
+							;24 + 75 = 99
+sioin5:		dey					;2
+		bne	sioin3				;3 	
+							; loop = 99 + 5 = 104
+		rol	DATIN
+		bcc	sioin9				;character data
+		bpl	sioin6				;HORIZ WITH NO VERT
+		and	#$7F				;CLEAR UPPER FLAG
+		cmp	#$51				;TEST HORIZ/VERT
+		bcc	sioin7 				;HORIZONTAL
+		and	#$1F				;CLEAR MID FLAG
+		bcs	sioin8				;SAVE VERT
+sioin7:		jsr	sioin6				;SAVE HORIZ
+		bcc	sioinput			;GET VERT
+sioin6:		iny					;OFFSET FOR HORIZ
+sioin8:		sta	VCP,Y				;CURS POSITION
+;		sta	VCS,Y				;CURS SHADOW
+		clc					;INDICATE RESPONSE
+sioin9:		rts
+;============================================================
+; actual start of program
+;============================================================
+start:		jsr	geoutch
+		
+		jsr	CINIT		
+		jsr 	EOPEN
+		bcc	eopenok				;carry-clear, got response
+
+		lda	#$22				;no response, show message and reset
+		sta	SDMCTL				;switch normal DMA on
+
+		lda	#<noxep80			;if no XEP present
+		sta	ICBADR				;display message
+		lda	#>noxep80			
+		sta	ICBADR+1
+		jsr	println
+		jsr	KCALL				;wait for key
+		jmp	COLDSV				;reset
+
+	
+eopenok:	jsr	resetsally
+
+		sei					;set own serin IRQ routine		
+		lda	#<serinirq
+		sta	VSERIN
+		lda	#>serinirq
+		sta	VSERIN+1
+		lda	#<breakirq
+		sta	BRKKY
+		lda	#>breakirq
+		sta	BRKKY+1
+		jsr	SETPOKY				;reprogram POKEY for 9600 baud duplex
+		cli
+
+		jsr	clearvars
+
+		lda	#<welcome			;print welcome message
+		sta	PTR
+		lda	#>welcome
+		sta	PTR+1
+		jsr	printadm
+				
+		jsr	time				;send CR (POKEY code)
+		lda	#$0c
+		sta	CH
+
+		
+;============================================================
+; main loop
+;============================================================
+main:		jsr	getkey
+		beq	main1
+				
+		sta	SEROUT
+		
+main1:		jsr	serin
+		beq	main
+	
+main2:		jsr	adm3aput
+		
+		jmp	main
+	
+;============================================================
+; get key and translate to ASCII
+;============================================================
+getkey:		ldy	CH
+		cpy	#$ff
+		bne	getkey0
+
+myirqkey10:	lda	#0
+		rts
+
+getkey0:	ldx	#$ff
+		stx	CH
+
+		cpy	#$C0				;only 192 bytes in key-table
+		bcs	myirqkey10			
+		
+		jsr	skc				;sound key click
+		
+		lda	(KEYDEF),y
+		
+		cmp	#'a'
+		bcc	getkey1
+		cmp	#'z'+1
+		bcs	getkey1
+		sbc	#31
+		
+getkey1:	cmp	#EOL				;EOL $9b -> CR $0d
+		bne	getkey2
+		lda	#CR
+getkey2:	cmp	#CLS
+		bne	getkey3
+		lda	#$1e				;CTRL-<
+getkey3:	cmp	#$ff
+		bne	getkey4
+		lda	#$1f				;CTRL->	
+getkey4:	cmp	#TABU				;TABU $7f -> $09
+		bne	getkey5
+		lda	#$09
+getkey5:	cmp	#CLEFT
+		bne	getkey6
+		lda	#$08
+getkey6:	cmp	#CRIGHT
+		bne	getkey7
+		lda	#$0c
+getkey7:	cmp	#CUP
+		bne	getkey8
+		lda	#$0b
+getkey8:	cmp	#CDOWN
+		bne	getkey9
+		lda	#$0a
+getkey9:	cmp	#DELETE
+		bne	getkeyex
+		lda	#$08
+getkeyex:	rts
+	
+	
+	
+;============================================================
+; sound key click A,X destroyed
+;============================================================
+skc:		ldx	#2*63				;2 times trip count
+			
+SKC1:		stx	CONSOL				;turn loudspeaker on			
+		lda	VCOUNT				;vertical line counter		
+SKC2:		cmp	VCOUNT				;current vertical line counter
+		beq	SKC2				;if vertical line not changed
 		dex
-		BPL	ctrl1
-		jmp	retloop
+		dex
+		bpl	SKC1				;if not done
+		rts					;return
+	
+	
+	
+serin:		
+		ldx	bufstart
+		cpx	bufend
+		beq	serinex
+
+		inx
+		stx	bufstart
+		lda	buffer,x
+		
+serinex:	rts
+
+
+;============================================================
+; reset the ATR8000 / Sally interface
+;============================================================
+resetsally:
+		lda	#'Z'				;send 'G $F000' to Z:-device
+		sta	DDEVIC				;which is a reset
+		lda	#$01
+		sta	DUNIT
+		sta	DTIMLO
+		lda	#'G'
+		sta	DCOMND
+		lda	#$00
+		sta	DAUX1
+		lda	#$F0
+		sta	DAUX2
+		lda	#$00
+		sta	DSTATS
+		sta	DBYTLO
+		sta	DBYTHI
+		jmp	SIOV
+		
+;============================================================
+; serial routines
+;============================================================
+SETPOKY:	lda 	#85				;BAUD	9600
+		sta 	AUDF1
+		sta 	AUDF3
+		lda 	#$0
+		sta 	AUDF2
+		sta 	AUDF4
+			
+		lda 	#$78
+		sta 	AUDCTL
+		lda 	#$A0
+		sta 	AUDC1
+		sta 	AUDC2
+		sta 	AUDC3
+		sta 	AUDC4
+		lda 	#$73
+		sta 	SKCTL
+			
+		lda 	#0
+		sta 	IRQEN
+		sta	SKRES
+
+		lda	POKMSK
+		ora	#IMRECV+IMBRK
+		sta 	POKMSK
+		sta 	IRQEN
+		
+		rts
+
+;============================================================
+; serial-in IRQ routine
+;============================================================
+serinirq:	tya
+		pha
+		
+myirq1:		lda	SERIN
+
+myirq2:		inc	bufend
+		ldy	bufend
+		sta	buffer,y
+		
+myirqex:	pla
+		tay
+		pla
+		rti
+
+;============================================================
+;  break IRQ routine
+;============================================================
+breakirq:	pla
+		pla
+		pla
+		pla
+		
+		lda	#>asm3axep
+		pha
+		lda	#<asm3axep
+		pha
+		pha
+		rti
+;============================================================
+; wait some time before sending CR
+;============================================================
+time:		lda	#12
+		ldy	#0
+		ldx	#0
+time1:		dex
+		bne	time1
+		dey
+		bne	time1
+		sbc	#1
+		bne	time1
+		rts
+		
+;============================================================
+; ADM-3A output routines
+;============================================================
+adm3aput:	and	#127				;clear bit 7
+
+		ldx	direct
+		bne	decode4
+		
+		cmp	#32				;<space = control char?
+		bcc	ctrl
+		
+		ldx	escflag				;last key ESC?
+		beq	decode1				;no, check other flags
+		jmp	decodeesc			;do ESC stuff
+
+decode1:	bit	cflag
+		bvs	getcsry
+		bmi	getcsrx		
+
+decode3:	cmp	#$7d				;mask out 7d-7f
+		bcc	decode5
+		lda	#' '
+
+decode5:	ora	hibit
+
+decode4:	jsr	OUTPUT				;print char and fall through
+	
+		lda	#0
+		sta	escflag
+		sta	cflag
+		sta	direct
+		
+advancex:	inc	csrx				;increment xpos
+		ldx	csrx
+		cpx	#CSRXMAX+1			;if less then max+1 (80)
+		bcc	advance1			;quit
+		
+		ldx	#0				;else reset
+		stx	csrx				
+advancey:	ldx	<csry				;and increment y
+		cpx	#CSRYMAX			;if less than 23
+		bcc	advance1
+		inc	csry
+advance1:	rts
+
+
+;============================================================
+; ESC = 'column'+32 'row'+32
+;============================================================	
+getcsrx:	asl	cflag
+
+		sec
+		sbc	#32
+		sta	csrx
+		cmp	#CSRXMAX+1
+		bcc	getcsrx1
+		lda	#0
+getcsrx1:	jmp	CMD
+
+getcsry:	asl	cflag
+		
+		sec
+		sbc	#32
+		sta	csry
+		cmp	#CSRYMAX+1
+		bcc	getcsry1
+		lda	#0
+getcsry1:	ora	#128
+		jmp	CMD
+
+		
+;============================================================
+; process ADM-3A control codes
+;============================================================		
+ctrl:		ldx	ctrlnum				;search control table
+ctrl1:		cmp	ctrltab,x
+		beq	ctrlfound			;found, process control code
+		dex
+		bpl	ctrl1
+		rts					;if not found, return
 
 ctrlfound:	tay
 		txa
 		asl
 		tax
-		LDA	ctrladr+1,x
+		lda	ctrladr+1,x
 		pha
-		LDA	ctrladr,x
+		lda	ctrladr,x
 		pha
 		rts
-		
 
-csrleft:	lda	#CLEFT
+
+csrleft:	lda	csrx
+		bne	csrleft1
+		rts
+csrleft1:	dec	csrx
+		lda	#CLEFT
+		jmp	OUTPUT
+		
+tabul:		lda	csrx
+		cmp	#72
+		bcc	tabul1
+		rts
+
+tabul1:		inc	csrx
+		lda	#CRIGHT
+		jsr	OUTPUT
+		lda	csrx
+		and	#$7
+		bne	tabul1
 		rts
 		
-tabul:		LDA	#TABU
-		rts
-		
-csrdown:	LDA	VCP
+csrdown:	lda	csry
 		cmp	#CSRYMAX
-		BCC	csrdown1
-		LDA	HCP
-		pha
-		LDA	#EOL
-		JSR	WRITE
-		pla
-		STA	HCP
-		JSR	CMD
-		jmp	retloop
+		bcs	csrdown1
+		inc	csry
+		lda	#CDOWN
+		jmp	OUTPUT
 		
-		rts
-csrdown1:	inc	CSRY
-		LDA	#CDOWN
-		rts
+csrdown1:	lda	#EOL
+		jsr	OUTPUT
+		lda	csrx
+		jmp	CMD
 		
-csrup:		LDA	CSRY
-		BNE	csrup1
-		LDA	HCP
-		pha
-		LDA	#INSLIN
-		jmp	insline1
+csrup:		lda	csry
+		bne	csrup1
+		jmp	insline
 		
-csrup1:		DEC	CSRY
-		LDA	#CUP
-		rts
+csrup1:		dec	csry
+		lda	#CUP
+		jmp	OUTPUT
 		
-csrright:	LDA	#CRIGHT
+csrright:	lda	csrx
+		cmp	#CSRXMAX
+		bcc	csrright1
 		rts
+csrright1:	inc	csrx
+		lda	#CRIGHT
+		jmp	OUTPUT
 			
-csrret:		LDA	#0
-		JSR	CMD
-retloop:	pla
-		pla
-		jmp	loop
-
-clrscr:		LDA	#0
-		STA	CSRY
-		LDA	#CLS
+csrnl:		lda	#0
+		sta	csrx
+		jsr	advancey
+		lda	#EOL
 		rts
+
+csrret:		lda	#0
+		sta	csrx
+		jmp	CMD
+
+clrscr:		lda	#0
+		sta	csrx
+		sta	csry
+		lda	#CLS
+		jmp	OUTPUT
 		
 escape:		lda	#1
 		sta	escflag
-		BNE	retloop
+		rts
 		
-csrhome:	LDA	#0
-		STA	CSRY
-		JSR	CMD
-		LDA	#$80
-		JSR	CMD
-		jmp	csrret
+csrhome:	lda	#0
+		sta	csrx
+		sta	csry
+		jsr	CMD				;reset X-pos
+		lda	#YCR80
+		jmp	CMD
 		
-direct:		LDA	#1
-		STA	dflag
-		BNE	retloop
+direct:		inc	dflag
+		rts
 
 ;
 ;
 ;
-decodeesc:	LDX	#0
-		STX	escflag
+decodeesc:	dec	escflag
 		ldx	escnum
 decesc1:	cmp	esctab,x
-		BEQ	escfound
+		beq	escfound
 		dex
-		BPL	decesc1
-		BMI	retloop
+		bpl	decesc1
+		rts
 
 escfound:	tay
 		txa
 		asl
 		tax
-		LDA	escadr+1,x
+		lda	escadr+1,x
 		pha
-		LDA	escadr,x
+		lda	escadr,x
 		pha
 		rts
 
 disattr:	lda	#0
 disattr1:	sta	hibit
-		jmp	retloop
+		rts
 
 enaattr:	lda	#$80
-		BNE	disattr1
+		bne	disattr1
 
-setinv:		LDA	#$FF
-		JSR	WRITE
-		LDA	#$F5
-		JSR	CMD
-		jmp	retloop
-		
+setinv:		lda	#$FF
+		jsr	OUTPUT
+		lda	#$F5
+		jmp	CMD		
 
-csrpos:		LDA	#1
-		sta	cxflag
-		jmp	retloop
-
-getcsrx:	AND	#%11011111
-		ORA	#128
-		JSR	CMD
-		LDX	#0
-		STX	cxflag
-		inx
-		STX	cyflag
-		jmp	retloop
-
-getcsry:	AND	#%11011111
-		ORA	#128
-		JSR	CMD
-		LDX	#0
-		STX	cyflag
-		jmp	retloop
-
-
-insline:	LDA	HCP
-		pha
-		LDA	#INSLIN	
-insline1:	JSR	WRITE
-insline2:	pla
-		STA	HCP
-		JSR	CMD
-		jmp	retloop
-
-inschar:	LDA	#INSCHR
+csrpos:		lda	#$c0
+		sta	cflag
 		rts
 		
-delline:	LDA	HCP
-		pha
-		LDA	#DELIN
-		JSR	WRITE
-		jmp	insline1
+
+insline:	lda	#INSLIN	
+insline1:	jsr	OUTPUT
+insline2:	lda	csrx
+		jmp	CMD
+
+inschar:	lda	#INSCHR
+		jmp	OUTPUT
+		
+delline:	lda	#DELIN
+		jsr	OUTPUT
+		jmp	insline2
 		
 delchar:	lda	#DELCHR
-		rts
+		jmp	OUTPUT
 		
-clrline:	LDA	HCP
-		PHA
-clrline2:	LDA	#32
-		JSR	WRITE
-		inc	HCP
-		LDA	HCP
-		cmp	#80
-		BCC	clrline2
-clrline1:	bcs	insline2
+clrline:	lda	csrx
+		pha
+clrline2:	lda	#32
+		jsr	OUTPUT
+		inc	csrx
+		lda	csrx
+		cmp	#CSRXMAX
+		bcc	clrline2
+		pla
+		sta	csrx
+		jmp	CMD
+
 
 clrend:		sec
-		LDA	VCP
-		SBC	#23
-		BEQ	clrline
+		lda	csry
+		sbc	#23
+		beq	clrline
 		
-		STA	cnt
-		LDA	HCP
-		pha
-clrend1:	LDA	#DELIN
-		JSR	WRITE
-		DEC	cnt
-		BNE	clrend1
-		pla
-		STA	HCP
+		sta	cnt
+		lda	csrx
+clrend1:	lda	#DELIN
+		jsr	OUTPUT
+		dec	cnt
+		bne	clrend1
 		jmp	clrline
-
+	
+	
+clearvars:	lda	#0
+		sta	hibit
+		sta	escflag
+		sta	dflag
+		sta	cflag
+		sta	csrx
+		sta	csry
+		rts
+;============================================================
+; ADM-3A debug
+;============================================================		
+;adm3adbg:	lda	#0
+;		jsr	CMD
+;		lda	#24+128
+;		jsr	CMD
+;		
+;		lda	csrx
+;		jsr	puthex
+;		lda	#' '
+;		jsr	OUTPUT
+;		lda	csry
+;		jsr	puthex
+;		
+;		lda	csrx
+;		jsr	CMD
+;		lda	csry
+;		ora	#128
+;		jsr	CMD
+;		jmp	KCALL	
 
 ctrlnum:	.byte	9
 ctrltab:	.byte	8,9,10,11,12,13,26,27,30,31
@@ -427,244 +926,248 @@ ctrladr:	.word	csrleft-1, tabul-1, csrdown-1, csrup-1
 		.word	csrright-1, csrret-1, clrscr-1, escape-1
 		.word	csrhome-1, direct-1
 		
-escnum:		.BYTE	10
+escnum:		.byte	10
 esctab:		.byte	"()*7=EQRWTY"
 escadr:		.word	disattr-1, enaattr-1
 		.word	clrscr-1, setinv-1, csrpos-1, insline-1
 		.word	inschar-1, delline-1, delchar-1, clrline-1
-		.word	clrend-1
+		.word	clrend-1	
+
 ;============================================================
 ;
 ;============================================================
-KCALL:		LDA	$E425
-		PHA
-		LDA	$E424
-		PHA
-		RTS
+geoutch:	ldx	$E406				;CHAR PUT routine
+		ldy	$E407
+		inx
+		stx	OUTCH+1
+		bne	geoutch1
+		iny
+geoutch1:	sty	OUTCH+2
+		rts
 
-FESUB: 		LDA	FETAB,X
-		STA	SDMCTL
-		STA	DMACTL
-		LDA	FETAB+1,X
-		STA	VCP
-		LDA	FETAB+2,X
-		STA	HCP
-		STA	LMARGN
-		LDA	FETAB+3,X
-		STA	RMARGN
-		LDA	FETAB+4,X
-		STA	KEYDEL
-		LDA	FETAB+5,X
-		STA	KEYREP
-		RTS
+println:	ldx	#0
+		lda	#CPTXTR
+		sta	ICCOM,x
+		txa
+		sta	ICBLEN,x
+		lda	#1
+		sta	ICBLEN+1,x
+		jmp	CIOV
+	
+printadm:	ldy	#0
+		lda	(PTR),y
+		beq	printadm1
+		jsr	adm3aput
+		inc	PTR
+		bne	printadm
+		inc	PTR+1
+		bne	printadm
+printadm1:	rts
+
+
+NEWLINE:	lda	#EOL
+PRINT:		pha
+		txa
+		pha
+		tya
+		pha
+		tsx
+		lda	$103,X
+		jsr	OUTCH
+		pla
+		tay
+		pla
+		tax
+		pla
+		rts
+
+puthex:		pha
+		txa
+		pha
+		tya
+		pha
+	
+		tsx
+		lda	$103,X
+		pha
+		lsr	
+		lsr	
+		lsr	
+		lsr	
+		jsr	PUTNIB
+		pla
+		and	#$0f
+		jsr	PUTNIB
+	
+		pla
+		tya
+		pla
+		tax
+		pla
+		rts
+	
+	
+PUTNIB:		clc
+		adc	#'0'
+		cmp	#'9'+1
+		bcc	PUTNIB1
+		adc	#6
+PUTNIB1:	;jmp	PRINT
+		jmp	OUTPUT
 		
-
-WRITE:		LDY	SFLAG 				;CHECK CNTL 1
-		BNE	WRITE 				;IF ON
-		JSR	DISAB
-		LDY	DEV 				;ARE WE SCREEN?
-		BEQ	WR2 				;YES
-		PHA	
-		LDA	#00
-		STA	DEV
-		LDA	#SCR80
-		JSR	CMD
-		PLA	
-WR2:		LDY	LISTF 				;CHECK LIST FLAG
-		CPY	LISTS
-		BEQ	WR3
-		STY	LISTS 				;SAVE NEW VALUE
-		PHA	
-		TYA	
-		BEQ	WR25
-		LDA	#01 				;FORCE LSB
-WR25:		ORA	#LIS80
-		JSR	CMD 				;SEND NEW VALUE
-		PLA
-WR3:		;JSR ALIGN 				;SET PARMS
-		LDY	 CHBAS 				;CHECK CHAR SET
-		CPY	 CHSH
-		BEQ	 WR5
-		CPY	 #$E0
-		BNE	 WR4
-		STY	 CHSH
-		PHA	
-		LDA	 #GRF80
-WR35:		JSR	 CMD
-		PLA	
-		JMP	 WR5
-WR4:		CPY	 #$CC
-		BNE	 WR5
-		STY	 CHSH
-		PHA	
-		LDA	 #ICM80
-		BNE	 WR35
-WR5:		LDY	 CRSINH 			;CHECK CURS FLAG
-		CPY	 CRSS
-		BEQ	 WR6
-		STY	 CRSS
-		PHA	
-		TYA	
-		BEQ	 WR55
-		LDA	 #01
-WR55:		EOR	 #CRS80 			;CURSOR ON/OFF
-		JSR	 CMD
-		PLA	
-WR6:		JSR	 OUTPUT 			;SEND CHAR
-		LDA	 MODE 				;TEST FOR BURST
-		BNE	 WWAT 				;IF SO
-		JSR	 INPUT 				;GET NEW CURSOR
-		JSR	 CURCK 				;CHECK FOR X>$4F
-		JMP	 ENAB
-WWAT: 		JSR	 ENAB 				;ENABLE INTS
-		LDY	 #25					;OR SUCH
-		JSR	 S1
-WW1: 		LDA	 PORTA
-		AND	 INMSK
-		BEQ	 WW1
-WW2:		LDY	 #01
-		RTS
-
-READ:		JSR	DISAB				;DISABLE IRQ INTS
-		LDA	#GET80
-		JSR	CINP				;REQUEST, GET CHAR
-		PHA					;SAVE CHAR
-		JSR	INPUT				;GET CURS
-		JSR	CURCK				;CHECK FOR X>$4F
-		PLA					;RESTORE CHAR
-		JMP	ENAB
+;============================================================
 ;
+;============================================================
+KCALL:		lda	$E425
+		pha
+		lda	$E424
+		pha
+		rts
 
+FESUB: 		lda	FETAB,X
+		sta	SDMCTL
+		sta	DMACTL
+		lda	FETAB+1,X
+		sta	VCP
+		lda	FETAB+2,X
+		sta	HCP
+		sta	LMARGN
+		lda	FETAB+3,X
+		sta	RMARGN
+		lda	FETAB+4,X
+		sta	KEYDEL
+		lda	FETAB+5,X
+		sta	KEYREP
+		rts
 	
 ;	
 ;
 ; set timing control pointer ($f6) to 4
 ; set timing control register ($f7) to 168
 ;
-EOPEN:		LDX	#00
-		JSR	FESUB
-;		LDA	ICAX1Z 				;GET AUX 1
-;		AND	#32 				;CHECK CLEAR BIT
-;		BNE	C005 				;DONT DO RESET
-		LDA	#00
-		LDX	#06
-C0035:		STA	VCS,X
-		DEX	
-		BPL	C0035
-		LDA	#$E0
-		STA	CHSH
-		LDA	#$4F
-		STA	RMARGS
-		STA	COMPOS
-		JSR	DISAB
-
-IO00:		LDA	#RST80				;RESET 80 COL
-		JSR	CINP				;REQUEST, GET CHAR
-		BCC	IO01				;GOT IT
-		JSR	JTOGL				;SWITCH PORTS
-		BNE	IO00				;DO IT AGAIN
-IO01:		LDA	PAL				;CHECK COMPUTER TYPE
-		AND	#$0E
-		BNE	IOP1
-		LDA 	#PAL80
-		JSR	CMD				;SET 80 COL TO 50HZ
+EOPEN:		ldx	#00
+		jsr	FESUB
+;		lda	ICAX1Z 				;GET AUX 1
+;		and	#32 				;CHECK CLEAR BIT
+;		bne	C005 				;DONT DO RESET
+;		lda	#00
+;		ldx	#06
+;C0035:		sta	VCS,X
+;		dex	
+;		bpl	C0035
 		
-		LDA	#2
-		JSR	WRITE
-		LDA	#TCP80
-		JSR	CMD
+;		lda	#$E0
+;		sta	CHSH
+;		lda	#$4F
+;		sta	RMARGS
+;		sta	COMPOS
+		jsr	DISAB
+
+IO00:		jsr	resetxep
+		bcc	IO01				;GOT IT
+		jsr	JTOGL				;SWITCH PORTS
+		jsr	resetxep
+		bcc	IO01				;GOT IT
+							;not founf yet, try SIO bus
+		ldx	#11
+IO00a:		lda	siohand,x
+		sta	OUTPUT,x
+		dex
+		bpl	IO00a
+		jsr	resetxep
+		bcc	IO01				;GOT IT
+		jmp	ENAB				;bail out carry set!
+
+IO01:		lda	PAL				;CHECK COMPUTER TYPE
+		and	#$0E
+		bne	IOP1
+
+		lda 	#PAL80
+		jsr	CMD				;SET 80 COL TO 50HZ
 		
-		LDA	#84
-		JSR	WRITE
-		LDA	#TCR80
-		JSR	CMD
+IOP1:		lda	#SCB80				;BURST mode
+		jsr	CMD
 
-		LDA	#84+15
-		JSR	WRITE
-		LDA	#TCR80
-		JSR	CMD
-		
-		LDA	#169
-		JSR	WRITE
-		LDA	#TCR80
-		JSR	CMD
+		clc
+		jmp	ENAB
 
-IOP1:		JMP	ENAB
-
+resetxep:	lda	#RST80				;RESET 80 COL
+		jmp	CINP				;REQUEST, GET CHAR
 ;	
 ;	
 ;	
-CINIT:		lda	#1
-		sta	LISTF
-		LDA	#00
-		STA 	TOGGLE
-		BEQ	JINIT
+CINIT:		lda	#00
+		sta 	TOGGLE
+		beq	JINIT
 		
-JTOGL:		LDA	#01
-		EOR 	TOGGLE
-		STA 	TOGGLE
-JINIT:		LDX 	TOGGLE
-		LDY	INMST,X
-		STY	INMSK
-		LDY	OUTMT,X
-		STY	OUTMS
-		LDA	#$FF
-		STA	PORTA
-		LDX	#$38
-		STX	PACTL
-		STY	PORTA
-		LDX	#$3C
-		STX	PACTL
-		RTS
+JTOGL:		lda	#01
+		eor 	TOGGLE
+		sta 	TOGGLE
+JINIT:		ldx 	TOGGLE
+		ldy	INMST,X
+		sty	INMSK
+		ldy	OUTMT,X
+		sty	OUTMS
+		lda	#$FF
+		sta	PORTA
+		ldx	#$38
+		stx	PACTL
+		sty	PORTA
+;		ldx	#$3C			
+		ldx	#$34				;for SIO, output CA2=0 (inverse!)
+		stx	PACTL
+		rts
 ;
-DISAB:		LDY	#00
-		STY	NMIEN
-		SEI
-		RTS
+DISAB:		ldy	#00
+		sty	NMIEN
+		sei
+		rts
 ;
-ENAB:		LDY	#$C0
-		STY	NMIEN
-		CLI
-EXIT:		LDY	#01
-ERTS:		RTS
-;
-VCS:		.BYTE	0
-HCS:		.BYTE	0
-DEV:		.BYTE	0
-LMARGS:		.BYTE	0
-LISTS:		.BYTE	0
-MODE:		.BYTE	0
-CRSS:		.BYTE	0
-CSRY:		.BYTE	0
-;
-;	
-DATIN:		.BYTE	0
-HCPS:		.BYTE	0
-HCPE:		.BYTE	0
-KSTAT:		.BYTE	0
-INMSK:		.BYTE	0
-OUTMS:		.BYTE	0
-TOGGLE:		.BYTE	0
-TIOCB:		.BYTE	0
-TCHAR:		.BYTE	0
-;
-CHSH:		.BYTE	0
-RMARGS:		.BYTE	0
-COMPOS:		.BYTE	0
-;
-char:		.BYTE	0
+ENAB:		cli
+		ldy	#$C0
+		sty	NMIEN
+		rts
+		
+;============================================================
+; XEP80 hardware variables
+;============================================================
+DATIN:		.byte	0
+INMSK:		.byte	0
+OUTMS:		.byte	0
+TOGGLE:		.byte	0
+INMST:		.byte	02,$20
+OUTMT:		.byte	01,$10
+
+FETAB:		.byte	0,0,0,$4F,24,3
+		.byte	62,0,2,39,30,6
+		
+siohand:	jmp	sioout
+		jmp	siocmd
+		jmp	siocinp
+		jmp	sioinput
+;============================================================
+; ADM-3A flags and variables
+;============================================================
 escflag:	.byte	0
-dflag:		.BYTE	0
-iflag:		.BYTE	0
-hibit:		.BYTE	0
-cxflag:		.BYTE	0
-cyflag:		.BYTE	0
-cnt:		.BYTE	0
-csrx:		.BYTE	0
-csry:		.BYTE	0
-	
-INMST:		.BYTE	02,$20
-OUTMT:		.BYTE	01,$10
+dflag:		.byte	0
+hibit:		.byte	0
+cflag:		.byte	0				;flags to set cursor (ESC =)
+cnt:		.byte	0
+;csrx:		.byte	0				;equated to HCP	above
+;csry:		.byte	0				;equated to VCP above
 
-FETAB:		.BYTE	0,0,0,$4F,24,3
-		.BYTE	62,0,2,39,30,6
+bufstart:	.byte	0				;serial-in buffer start
+bufend:		.byte	0				;serial-in buffer end
+			
+;============================================================
+; jump to E:-handler put routine
+;============================================================
+OUTCH:		jmp 0
+
+welcome:	.byte	"ADM-3A Pi-XEP80 started, resetting ATR8000 / Sally ", CR, LF
+		.byte	"Mini-Mon prompt should appear within 2 seconds", CR, LF
+		.BYTE	"B - boot, M - modify RAM, G - goto adddress", CR, 0
+		
+noxep80:	.byte	"No XEP80 present, press any key.",EOL
+
+buffer		= *

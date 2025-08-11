@@ -4,7 +4,7 @@ set PLATFORM=4
 call var-def.cmd
 
 
-call :compile_module adm3ax80 5000
+call :compile_module adm3ax80 2000
 if NOT %result%==0 goto ende
 
 call :compile_module runad 2e0
@@ -16,6 +16,10 @@ copy %RES%\dos25.atr .
 copy /Y /B adm3ax80.com + runad.com autorun.sys
 
 %TOOLS%\xfddos -i dos25.atr autorun.sys	
+%TOOLS%\xfddos -i dos25.atr C:\github\Sally-2\atari\autoterm.com	
+
+rem %TOOLS%\xfddos -i dos25.atr adm3ax80.com
+	
 rem ..\%TOOLS%\xfddos -i boot.atr bootsec.com
 rem echo on
 
