@@ -1,0 +1,5 @@
+	BASE=$6000
+	
+	.include "sioxep80.a65"
+;	.include "xep80han.a65"
+	

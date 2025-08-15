@@ -1,0 +1,918 @@
+ca65 V2.17 - Git 59ab140
+Main file   : ..\src\h6000.a65
+Current file: ..\src\h6000.a65
+
+000000r 1               	BASE=$6000
+000000r 1               
+000000r 1               	.include "sioxep80.a65"
+000000r 2               ;============================================================
+000000r 2               ; Handler for XEP80 connected to SIO bus
+000000r 2               ;
+000000r 2               ; MOTOR ON (CA2) is used as bit-banged serial line to XEP80
+000000r 2               ; CA2 is sent inverted via a PNP transistor to XEP80
+000000r 2               ; PROCEED (CA1) is used as feedback from XEP80 to ATARI
+000000r 2               ;
+000000r 2               ;============================================================
+000000r 2               ;.OPT NOLIST
+000000r 2               ;	.OPT NOEJECT
+000000r 2               ;
+000000r 2               ;	BASE=$6000
+000000r 2               ;
+000000r 2               ;CHAR EQUATES
+000000r 2               ;
+000000r 2               	LF=10
+000000r 2               	CR=13
+000000r 2               	ESC=$1B
+000000r 2               	SPACE=$20
+000000r 2               	CNTL=$5E
+000000r 2               	CLS=$7D
+000000r 2               	EOL=$9B
+000000r 2               ;
+000000r 2               ;80 COL COMMANDS
+000000r 2               ;
+000000r 2               	XCH80=$50
+000000r 2               	LMG80=$60
+000000r 2               	LMH80=$70
+000000r 2               	YCR80=$80
+000000r 2               	SGR80=$99
+000000r 2               	PAG80=$9A
+000000r 2               	RMG80=$A0
+000000r 2               	RMH80=$B0
+000000r 2               	GET80=$C0
+000000r 2               	CUR80=$C1
+000000r 2               	RST80=$C2
+000000r 2               	PST80=$C3
+000000r 2               	CLR80=$C4
+000000r 2               	LIS80=$D0
+000000r 2               	SCR80=$D2
+000000r 2               	SCB80=$D3
+000000r 2               	GRF80=$D4
+000000r 2               	ICM80=$D5
+000000r 2               	PAL80=$D7
+000000r 2               	CRS80=$D9
+000000r 2               	MCF80=$DB
+000000r 2               	PNT80=$DD
+000000r 2               ;
+000000r 2               ;MEMORY EQUATES
+000000r 2               ;
+000000r 2               	DOSINI=$0C
+000000r 2               	ICDNOZ=$21
+000000r 2               	ICCOMZ=$22
+000000r 2               	ICAX1Z=$2A
+000000r 2               	ICAX2Z=$2B
+000000r 2               	ICIDNO=$2E
+000000r 2               	LMARGN=$52
+000000r 2               	RMARGN=$53
+000000r 2               	VCP=$54
+000000r 2               	HCP=$55
+000000r 2               	IN=$CC
+000000r 2               	CDTMV3=$21C
+000000r 2               	SDMCTL=$22F
+000000r 2               	KEYDEL=$2D9
+000000r 2               	KEYREP=$2DA
+000000r 2               	DVSTAT=$2EA
+000000r 2               	CRSINH=$2F0
+000000r 2               	CHBAS=$2F4
+000000r 2               	LISTF=$2FE
+000000r 2               	SFLAG=$2FF
+000000r 2               	HATABS=$31A
+000000r 2               	ICDNO=$341
+000000r 2               	ICCOM=$342
+000000r 2               	PAL=$D014
+000000r 2               	IRQEN=$D20E
+000000r 2               	SKSTAT=$D20F
+000000r 2               	PORTA=$D300
+000000r 2               	PACTL=$D302
+000000r 2               	DMACTL=$D400
+000000r 2               	WSYNC=$D40A
+000000r 2               	VCOUNT=$D40B
+000000r 2               	NMIEN=$D40E
+000000r 2               
+000000r 2               ;
+000000r 2               ; CA2 equates
+000000r 2               ;
+000000r 2               ;
+000000r 2               	CA2LOW=$34
+000000r 2               	CA2HIGH=$3C
+000000r 2               
+000000r 2               	.org BASE-2
+005FFE  2               ;
+005FFE  2  98 04        		.WORD CEND-BEGIN			;RELOCATER INFO
+006000  2               ;
+006000  2  20 AB 63     BEGIN:		JSR 	ERTS				;DOSINI VECTOR
+006003  2  4C B4 61     		JMP 	CINIT				;RELOCATER JUMP
+006006  2               ;
+006006  2  00           PAUX1:		.BYTE 0
+006007  2  00           PAUX2:		.BYTE 0
+006008  2               ;
+006008  2  20 9C 63     READ:		JSR	DISAB				;DISABLE IRQ INTS
+00600B  2  A9 C0        		LDA	#GET80
+00600D  2  20 1B 60     		JSR	CINP				;REQUEST, GET CHAR
+006010  2  48           		PHA					;SAVE CHAR
+006011  2  20 1E 60     		JSR	INPUT				;GET CURS
+006014  2  20 96 60     		JSR	CURCK				;CHECK FOR X>$4F
+006017  2  68           		PLA					;RESTORE CHAR
+006018  2  4C A3 63     		JMP	ENAB
+00601B  2               ;
+00601B  2               ;============================================================
+00601B  2               ; SIO XEP80 input routine
+00601B  2               ; 15625kHz equals 64uS equals 114 CPU cycles
+00601B  2               ; 9 cycles refresh per scanline, remain 105
+00601B  2               ;============================================================
+00601B  2  20 A4 60     CINP:		jsr	CMD
+00601E  2  A9 34        INPUT:		lda	#CA2LOW				;wait for low-edge
+006020  2  8D 02 D3     		sta	PACTL
+006023  2  AD 00 D3     		lda	PORTA				;clear possible pending edge-detect
+006026  2  A0 1F        		ldy	#31
+006028  2  A2 00        		ldx	#0
+00602A  2               
+00602A  2  AD 02 D3     sioin1:		lda	PACTL				;4
+00602D  2  30 08        		bmi	sioin2				;3 got low-edge
+00602F  2  CA           		dex					;try some time
+006030  2  D0 F8        		bne	sioin1
+006032  2  88           		dey
+006033  2  D0 F5        		bne	sioin1				;if no response
+006035  2  38           		sec					;quit carry set
+006036  2  60           		rts
+006037  2               
+006037  2  AD 00 D3     sioin2:		lda	PORTA				;4 reset IRQA1 bit
+00603A  2               
+00603A  2  A9 36        		lda	#CA2LOW+2			;2 set rising edge detect
+00603C  2  8D 02 D3     		sta	PACTL				;4
+00603F  2  20 90 60     		jsr	bittime				;6 + 63
+006042  2               
+006042  2  A0 09        		ldy	#9				;2 input 9 bits
+006044  2               							;= 86
+006044  2               							;plus next jsr, we arrive at 155 cycles, about 1 1/2 bits
+006044  2               
+006044  2  20 90 60     sioin3:		jsr	bittime				;6 + 63 = 69
+006047  2  AD 02 D3     		lda	PACTL				;3
+00604A  2  30 0F        		bmi	sioin4				;3 or 2 = 75
+00604C  2               
+00604C  2  49 02        		eor	#2				;2 toggle CA1 bit
+00604E  2  4A           		lsr					;2
+00604F  2  4A           		lsr					;2
+006050  2  6E B6 63     		ror	DATIN				;6 shiftin
+006053  2  A5 00        		lda	$0				;3 waste
+006055  2  EA           		nop					;6 waste
+006056  2  EA           		nop
+006057  2  EA           		nop
+006058  2  4C 6B 60     		jmp	sioin5				;3
+00605B  2               
+00605B  2  4A           sioin4:		lsr					;2 put edge-detect in carry
+00605C  2  4A           		lsr					;2
+00605D  2  6E B6 63     		ror	DATIN				;6 shift in datin
+006060  2  AD 00 D3     		lda	PORTA				;4 reset IRQA bit
+006063  2  AD 02 D3     		lda	PACTL				;4 check other edge
+006066  2  49 02        		eor	#2				;2
+006068  2  8D 02 D3     		sta	PACTL				;4
+00606B  2               							;24 + 75 = 99
+00606B  2  88           sioin5:		dey					;2
+00606C  2  D0 D6        		bne	sioin3				;3
+00606E  2               							; loop = 99 + 5 = 104
+00606E  2  2E B6 63     		rol	DATIN
+006071  2  AD B6 63     		lda	DATIN
+006074  2  90 19        		bcc	sioin9				;character data
+006076  2  10 0F        		bpl	sioin6				;HORIZ WITH NO VERT
+006078  2  29 7F        		and	#$7F				;CLEAR UPPER FLAG
+00607A  2  C9 51        		cmp	#$51				;TEST HORIZ/VERT
+00607C  2  90 04        		bcc	sioin7 				;HORIZONTAL
+00607E  2  29 1F        		and	#$1F				;CLEAR MID FLAG
+006080  2  B0 06        		bcs	sioin8				;SAVE VERT
+006082  2  20 87 60     sioin7:		jsr	sioin6				;SAVE HORIZ
+006085  2  90 97        		bcc	INPUT				;GET VERT
+006087  2  C8           sioin6:		iny					;OFFSET FOR HORIZ
+006088  2  99 54 00     sioin8:		sta	VCP,Y				;CURS POSITION
+00608B  2  99 AC 63     		sta	VCS,Y				;CURS SHADOW
+00608E  2  18           		clc					;INDICATE RESPONSE
+00608F  2  60           sioin9:		rts
+006090  2               
+006090  2               ;============================================================
+006090  2               ; bittime, wait 63 cycles
+006090  2               ;============================================================
+006090  2  A2 0B        bittime:	ldx	#11				;2
+006092  2  CA           bittime1:	dex					;x * (2+3) = 11*5 = 55
+006093  2  D0 FD        		bne	bittime1
+006095  2  60           		rts					;6, 8+55=63
+006096  2               
+006096  2  A5 55        CURCK:		LDA	HCP				;CHECK HORIZ CURSOR
+006098  2  C9 50        		CMP	#$50				;FOR >$4F
+00609A  2  90 F3        		BCC	sioin9				;IF NOT
+00609C  2  A9 C1        		LDA	#CUR80				;GO GET REAL VALUE
+00609E  2  20 1B 60     		JSR	CINP
+0060A1  2  4C 87 60     		JMP	sioin6				;AND STORE IT (Y=0)
+0060A4  2               
+0060A4  2               ;============================================================
+0060A4  2               ; Output CMD or CHAR
+0060A4  2               ;============================================================
+0060A4  2  38           CMD:		SEC					;THIS CODE MUST NOT
+0060A5  2  B0 01        		BCS	OUT				;CROSS A PAGE BOUNDARY
+0060A7  2  18           OUTPUT:		CLC					;CMD FLAG=0 FOR CHAR
+0060A8  2  A0 3C        OUT:		LDY	#CA2HIGH			;CA2=1
+0060AA  2  20 D2 60     		JSR	SEND				;SEND START BIT (=0)
+0060AD  2  A2 08        		LDX	#08				;SETUP BIT COUNT OF 9
+0060AF  2  EA           		NOP
+0060B0  2  EA           		NOP
+0060B1  2  EA           		NOP					;2+2+2+2=8
+0060B2  2  6A           OUT0:		ROR	A				;PUT BIT INTO CARRY
+0060B3  2  B0 09        		BCS	HI
+0060B5  2  90 00        		BCC	LO				;2+3=5 CYCLES TO LO
+0060B7  2  A0 3C        LO:		LDY	#CA2HIGH			;5+2 CYCLES TO JSR
+0060B9  2  20 D2 60     		JSR	SEND				;SEND A 0
+0060BC  2  90 07        		BCC	OUT1				;3 CYCLES
+0060BE  2  A0 34        HI:		LDY	#CA2LOW				;3+4 CYCLES TO JSR
+0060C0  2  20 D2 60     		JSR	SEND				;SEND A 1
+0060C3  2  B0 00        		BCS	OUT1				;3 CYCLES
+0060C5  2  CA           OUT1:		DEX					;NEXT BIT 2 CYC
+0060C6  2  10 EA        		BPL	OUT0				;MORE 3 OR 2 CYC
+0060C8  2  30 00        		BMI	OUT2				;SEND STOP BIT 3 CYC
+0060CA  2  A0 34        OUT2:		LDY	#CA2LOW				;SEND A 1
+0060CC  2  D0 00        		BNE	OUT3
+0060CE  2  20 D2 60     OUT3:		JSR	SEND				;2+3+4+3=12
+0060D1  2  60           		RTS
+0060D2  2               
+0060D2  2  8C 02 D3     SEND:		STY	PACTL				;OUTPUT BIT
+0060D5  2  A0 0C        		LDY	#12				;TIMER FOR 15.7KB
+0060D7  2  88           S1:		DEY
+0060D8  2  D0 FD        		BNE	S1				;5*Y-1 CYCLES
+0060DA  2  F0 00        		BEQ	S2				;3
+0060DC  2  EA           S2:		NOP
+0060DD  2  EA           		NOP
+0060DE  2  EA           		NOP
+0060DF  2  EA           		NOP					;2+2+2+2=8
+0060E0  2  60           S3:		RTS					;6 CYCLES
+0060E1  2               ;
+0060E1  2  A5 22        COM:		LDA	ICCOMZ				;GET COM BYTE
+0060E3  2  C9 14        		CMP	#$14				;CHECK DEBUG OUT
+0060E5  2  D0 0B        		BNE	COM1				;TRY NEXT XIO
+0060E7  2  A5 2B        		LDA	ICAX2Z				;GET AUX 2
+0060E9  2  20 9C 63     COMSD:		JSR	DISAB				;STOP INTERRUPTS
+0060EC  2  20 A4 60     		JSR	CMD					;GO SEND
+0060EF  2  4C A3 63     		JMP	ENAB				;ENABLE AND NORM EXIT
+0060F2  2  C9 15        COM1:		CMP	#$15				;TEST VALID
+0060F4  2  D0 12        		BNE	COM2				;NEXT
+0060F6  2  A5 2B        		LDA	ICAX2Z				;GET AUX 2
+0060F8  2  D0 07        		BNE	COMBR				;GO DO BURST
+0060FA  2  8D B1 63     		STA	MODE				;MAKE NORMAL
+0060FD  2  A9 D2        		LDA	#SCR80				;GET CMD
+0060FF  2  D0 E8        		BNE	COMSD				;GO SEND
+006101  2  8D B1 63     COMBR:		STA	MODE				;MAKE BURST
+006104  2  A9 D3        		LDA	#SCB80				;GET CMD
+006106  2  D0 E1        		BNE	COMSD				;GO SEND
+006108  2  C9 16        COM2:		CMP	#$16				;CHECK DEBUG IN
+00610A  2  D0 0E        		BNE	COM3				;NEXT
+00610C  2  A5 2B        		LDA	ICAX2Z				;GET BYTE TO SEND
+00610E  2  20 9C 63     		JSR	DISAB
+006111  2  20 1B 60     		JSR	CINP				;REQUEST, GET CHAR
+006114  2  8D EB 02     		STA	DVSTAT+1			;FOR NOW
+006117  2  4C A3 63     		JMP	ENAB
+00611A  2  C9 19        COM3:		CMP	#$19				;CHECK 80/40
+00611C  2  D0 03        		BNE	COM4
+00611E  2  4C 42 62     		JMP	XIO19				;DO IT
+006121  2  60           COM4:		RTS
+006122  2               ;
+006122  2               ;PCOM:		LDA	ICCOMZ				;GET CMD
+006122  2               ;		CMP	#$17				;TEST VALID
+006122  2               ;		BNE	S3				;NO MORE FOR NOW
+006122  2               ;		LDA	ICAX2Z				;GET AUX 2
+006122  2               ;		CMP	#08				;CHECK RESERVED
+006122  2               ;		BCS	S3				;NO GOOD
+006122  2               ;		AND	#03				;CHECK 3 AND 7
+006122  2               ;		EOR	#03
+006122  2               ;		BEQ	S3				;NOT ALLOWED
+006122  2               ;		LDA	ICAX1Z				;GET AUX1
+006122  2               ;		CMP	#08				;CHECK UPPER LIMIT
+006122  2               ;		BCS	S3				;NO GOOD
+006122  2               ;		STA	PAUX1
+006122  2               ;		LDA	ICAX2Z				;GET AUX 2
+006122  2               ;		STA	PAUX2
+006122  2               ;		JMP	EXIT
+006122  2               ;
+006122  2  AC FF 02     WRITE:		LDY	SFLAG				;CHECK CNTL 1
+006125  2  D0 FB        		BNE	WRITE				;IF ON
+006127  2  20 9C 63     		JSR	DISAB
+00612A  2  AC AE 63     		LDY	DEV				;ARE WE SCREEN?
+00612D  2  F0 0C        		BEQ	WR2				;YES
+00612F  2  48           		PHA
+006130  2  A9 00        		LDA	#00
+006132  2  8D AE 63     		STA	DEV
+006135  2  A9 D2        		LDA	#SCR80
+006137  2  20 A4 60     		JSR	CMD
+00613A  2  68           		PLA
+00613B  2  AC FE 02     WR2:		LDY	LISTF				;CHECK LIST FLAG
+00613E  2  CC B0 63     		CPY	LISTS
+006141  2  F0 0F        		BEQ	WR3
+006143  2  8C B0 63     		STY	LISTS				;SAVE NEW VALUE
+006146  2  48           		PHA
+006147  2  98           		TYA
+006148  2  F0 02        		BEQ	WR25
+00614A  2  A9 01        		LDA	#01				;FORCE LSB
+00614C  2  09 D0        WR25:		ORA	#LIS80
+00614E  2  20 A4 60     		JSR	CMD				;SEND NEW VALUE
+006151  2  68           		PLA
+006152  2  20 CF 63     WR3:		JSR	ALIGN				;SET PARMS
+006155  2  AC F4 02     		LDY	CHBAS				;CHECK CHAR SET
+006158  2  CC B3 63     		CPY	CHSH
+00615B  2  F0 1D        		BEQ	WR5
+00615D  2  C0 E0        		CPY	#$E0
+00615F  2  D0 0D        		BNE	WR4
+006161  2  8C B3 63     		STY	CHSH
+006164  2  48           		PHA
+006165  2  A9 D4        		LDA	#GRF80
+006167  2  20 A4 60     WR35:		JSR	CMD
+00616A  2  68           		PLA
+00616B  2  4C 7A 61     		JMP	WR5
+00616E  2  C0 CC        WR4:		CPY	#$CC
+006170  2  D0 08        		BNE	WR5
+006172  2  8C B3 63     		STY	CHSH
+006175  2  48           		PHA
+006176  2  A9 D5        		LDA	#ICM80
+006178  2  D0 ED        		BNE	WR35
+00617A  2  AC F0 02     WR5:		LDY	CRSINH				;CHECK CURS FLAG
+00617D  2  CC B2 63     		CPY	CRSS
+006180  2  F0 0F        		BEQ	WR6
+006182  2  8C B2 63     		STY	CRSS
+006185  2  48           		PHA
+006186  2  98           		TYA
+006187  2  F0 02        		BEQ	WR55
+006189  2  A9 01        		LDA	#01
+00618B  2  49 D9        WR55:		EOR	#CRS80				;CURSOR ON/OFF
+00618D  2  20 A4 60     		JSR	CMD
+006190  2  68           		PLA
+006191  2  20 A7 60     WR6:		JSR	OUTPUT				;SEND CHAR
+006194  2  AD B1 63     		LDA	MODE				;TEST FOR BURST
+006197  2  D0 09        		BNE	WWAT				;IF SO
+006199  2  20 1E 60     		JSR	INPUT				;GET NEW CURSOR
+00619C  2  20 96 60     		JSR	CURCK				;CHECK FOR X>$4F
+00619F  2  4C A3 63     		JMP	ENAB
+0061A2  2  20 A3 63     WWAT:		JSR	ENAB				;ENABLE INTS
+0061A5  2  A0 19        		LDY	#25				;OR SUCH
+0061A7  2  20 D7 60     		JSR	S1
+0061AA  2               ;WW1:		LDA	PORTA
+0061AA  2               ;		AND	INMSK
+0061AA  2               ;		BEQ	WW1
+0061AA  2  A0 01        WW2:		LDY	#01
+0061AC  2  60           		RTS
+0061AD  2               ;
+0061AD  2               ;POPEN:		STX	TIOCB
+0061AD  2               ;		LDX	ICDNOZ
+0061AD  2               ;		JSR	MATRIX
+0061AD  2               ;		BCS	HANDGO
+0061AD  2               ;		LDY	SDMCTL
+0061AD  2               ;		BNE	WW2
+0061AD  2               ;		LDA	#PST80
+0061AD  2               ;		JSR	DISAB
+0061AD  2               ;		JSR	CINP				;REQUEST, GET CHAR
+0061AD  2               ;		BNE	POP1
+0061AD  2               ;		LDA	#139				;NOBODY HOME
+0061AD  2               ;POP1:		JSR	ENAB
+0061AD  2               ;		TAY
+0061AD  2               ;		RTS
+0061AD  2               ;
+0061AD  2               ;HANDGO:		LDA	ICDNOZ
+0061AD  2               ;		STX	ICDNOZ
+0061AD  2               ;		PHA
+0061AD  2               ;		LDA	ICCOMZ
+0061AD  2               ;		AND	#08
+0061AD  2               ;		TAX
+0061AD  2               ;		JSR	HAND
+0061AD  2               ;		PLA
+0061AD  2               ;		STA	ICDNOZ
+0061AD  2               ;		RTS
+0061AD  2               ;
+0061AD  2               ;PWRT:		TAY					;SAVE CHAR
+0061AD  2               ;		STX	TIOCB
+0061AD  2               ;		LDA	ICDNO,X
+0061AD  2               ;		TAX
+0061AD  2               ;		JSR	MATRIX
+0061AD  2               ;		TYA
+0061AD  2               ;		BCC	PWP
+0061AD  2               ;		STA	TCHAR				;SAVE CHAR FOR CALL
+0061AD  2               ;		LDY	TIOCB				;GET UNIT #
+0061AD  2               ;		LDA	ICDNO,Y
+0061AD  2               ;		PHA					;SAVE UNIT #
+0061AD  2               ;		TXA					;GET NEW VALUE
+0061AD  2               ;		STA	ICDNO,Y				;REPLACE WITH NEW
+0061AD  2               ;		STA	ICDNOZ				;AND ZERO PAGE
+0061AD  2               ;		LDX	#06
+0061AD  2               ;		JSR	HAND				;GO PRINT
+0061AD  2               ;		PLA					;RESTORE UNIT #
+0061AD  2               ;		LDX	TIOCB				;GET POINTER
+0061AD  2               ;		STA	ICDNO,X				;RESTORE OLD
+0061AD  2               ;		STA	ICDNOZ
+0061AD  2               ;		RTS
+0061AD  2               ;PWP:		LDY	DEV				;CHECK OUTPUT DEV
+0061AD  2               ;		BNE	PW0
+0061AD  2               ;		PHA
+0061AD  2               ;		LDY	SDMCTL
+0061AD  2               ;		BEQ	PW2
+0061AD  2               ;PW1:		LDY	VCOUNT
+0061AD  2               ;		CPY	#129
+0061AD  2               ;		BNE	PW1
+0061AD  2               ;PW2:		JSR	DISAB
+0061AD  2               ;		LDA	#PNT80
+0061AD  2               ;		STA	DEV
+0061AD  2               ;		JSR	CMD
+0061AD  2               ;		JSR	ENAB
+0061AD  2               ;		PLA					;RESTORE CHAR
+0061AD  2               ;PW0:		TAY					;SAVE CHAR
+0061AD  2               ;		LDA	PAUX2				;GET CNTL
+0061AD  2               ;		ROR	A				;CHECK NO XLATE
+0061AD  2               ;		TYA					;RESTORE CHAR
+0061AD  2               ;		BCS	DOIT				;DONT XLATE
+0061AD  2               ;		CMP	#EOL				;CHECK EOL
+0061AD  2               ;		BNE	XLATE				;XLATE IF NOT
+0061AD  2               ;		LDA	#CR				;REPLACE WITH CR
+0061AD  2               ;		JSR	DOIT				;SEND
+0061AD  2               ;		LDA	PAUX2				;GET CNTL
+0061AD  2               ;		AND	#04				;CHECK NO APPEND
+0061AD  2               ;		BNE	WGDS				;DONT APPEND
+0061AD  2               ;		LDA	#LF				;GET LF
+0061AD  2               ;		BNE	DOIT				;SEND
+0061AD  2               ;XLATE:		LDA	PAUX2				;GET CNTL
+0061AD  2               ;		CMP	#02				;CHECK LIGHT XLATE
+0061AD  2               ;		TYA					;RESTORE CHAR
+0061AD  2               ;		BCC	DOIT				;DONE WITH XLATE
+0061AD  2               ;		AND	#$7F				;REMOVE MSB
+0061AD  2               ;		CMP	#$20				;CHECK ASCII CHAR
+0061AD  2               ;		BCS	DOIT				;GO PRINT ASCII
+0061AD  2               ;		PHA					;SAVE CHAR
+0061AD  2               ;		LDA	#CNTL				;GET "CNTL" CHAR
+0061AD  2               ;		JSR	DOIT				;SEND
+0061AD  2               ;		PLA					;RESTORE CHAR
+0061AD  2               ;		ORA	#$40				;MAKE ALPHA
+0061AD  2               ;DOIT:		LDY	SDMCTL
+0061AD  2               ;		BEQ	DO1
+0061AD  2               ;DO0:		LDY	VCOUNT
+0061AD  2               ;		CPY	#129
+0061AD  2               ;		BNE	DO0
+0061AD  2               ;DO1:		JSR	DISAB
+0061AD  2               ;		JSR	OUTPUT
+0061AD  2               ;		JSR	ENAB
+0061AD  2               ;WAIT:		LDY	#25				;FOR NOW
+0061AD  2               ;		JSR	S1
+0061AD  2               ;		LDY	#02
+0061AD  2               ;W0:		LDX	#255				;FOR NOW
+0061AD  2               ;		STX	CDTMV3				;SETUP VBLANK COUNT
+0061AD  2               ;W1:		LDA	PORTA
+0061AD  2               ;		AND	INMSK
+0061AD  2               ;		BNE	WGDS				;AVAILABLE
+0061AD  2               ;		LDA	CDTMV3				;CHECK COUNTDOWN
+0061AD  2               ;		BNE	W1
+0061AD  2               ;		DEY
+0061AD  2               ;		BNE	W0
+0061AD  2               ;WTMO:		LDY	#138				;DO TIMEOUT
+0061AD  2               ;		BNE	WRTS				;COULD DO BRKKEY ALSO
+0061AD  2               ;WGDS:		LDY	#01
+0061AD  2               ;WRTS:		RTS
+0061AD  2               ;
+0061AD  2               ;MATRIX:		CPX	#02
+0061AD  2               ;		BEQ	PNEXT
+0061AD  2               ;		BCS	POVER
+0061AD  2               ;		LDA	PAUX1
+0061AD  2               ;		LSR	A
+0061AD  2               ;POVER:		RTS
+0061AD  2               ;PNEXT:		LDA	#03
+0061AD  2               ;		CMP	PAUX1
+0061AD  2               ;		BCC	POVER
+0061AD  2               ;		LDA	PAUX1
+0061AD  2               ;		AND	#02
+0061AD  2               ;		BEQ	POVER
+0061AD  2               ;		DEX
+0061AD  2               ;		RTS
+0061AD  2               ;
+0061AD  2               ;HAND:		LDA	$E431,X
+0061AD  2               ;		PHA
+0061AD  2               ;		LDA	$E430,X
+0061AD  2               ;		PHA
+0061AD  2               ;		LDA	TCHAR				;RESTORE CHAR
+0061AD  2               ;		LDX	TIOCB				;GET IOCB POINTER
+0061AD  2               ;		RTS					;CALL PRINTER HANDLER
+0061AD  2               ;
+0061AD  2  A5 22        FORCOM:		LDA	ICCOMZ
+0061AF  2  C9 18        		CMP	#$18				;Fill Command
+0061B1  2  F0 41        		BEQ	XIO18
+0061B3  2  60           		RTS
+0061B4  2               ;
+0061B4  2               CINIT:		;LDA	#00
+0061B4  2               		;STA	TOGGLE
+0061B4  2               ;		JSR	JINIT				;INIT Joy-Port
+0061B4  2               ;		JSR	resxep80
+0061B4  2               ;		BCC	CINIT1				;GOT IT
+0061B4  2               ;noxep80a:	stx	$d01a
+0061B4  2               ;		inx
+0061B4  2               ;		JMP	noxep80a
+0061B4  2               
+0061B4  2               CINIT1:
+0061B4  2               ;		LDA	#$50
+0061B4  2               ;		LDY	#02 				;Printer
+0061B4  2               ;		JSR	FSET
+0061B4  2  A9 08        		lda	#8
+0061B6  2  8D C0 02     		STA	$2C0
+0061B9  2               
+0061B9  2  A9 53        		LDA	#$53				;S:-Handler
+0061BB  2  20 7D 64     		JSR	FIND
+0061BE  2  BD 1B 03     		LDA	HATABS+1,X
+0061C1  2  8D BA 63     		STA	TEMPSV
+0061C4  2  BD 1C 03     		LDA	HATABS+2,X
+0061C7  2  8D BB 63     		STA	TEMPSV+1
+0061CA  2  A9 45        		LDA	#$45				;E-Handler
+0061CC  2  20 7D 64     		JSR	FIND
+0061CF  2  BD 1B 03     		LDA	HATABS+1,X
+0061D2  2  85 CC        		STA	IN				;ZP-pointer
+0061D4  2  BD 1C 03     		LDA	HATABS+2,X
+0061D7  2  85 CD        		STA	IN+1
+0061D9  2  A0 0F        		LDY	#15
+0061DB  2  B1 CC        C003:		LDA	(IN),Y
+0061DD  2  99 D2 62     		STA	TMTAB,Y				;copy E-Handler entries to TMTAB
+0061E0  2  88           		DEY
+0061E1  2  10 F8        		BPL	C003
+0061E3  2  A9 AC        		LDA	#<(FORCOM-1)	;&$FF
+0061E5  2  8D DC 62     		STA	TMTAB+10
+0061E8  2  A9 61        		LDA	#>(FORCOM-1)	;/256
+0061EA  2  8D DD 62     		STA	TMTAB+11
+0061ED  2  AD 0F D2     		LDA	SKSTAT				;shift pressed?
+0061F0  2  29 08        		AND	#08
+0061F2  2  F0 70        		BEQ	C004				;yes, jump
+0061F4  2  A9 45        XIO18:		LDA	#$45				;E:
+0061F6  2  A0 00        		LDY	#00
+0061F8  2  20 89 64     		JSR	FSET
+0061FB  2  A9 53        		LDA	#$53				;S:
+0061FD  2  A0 01        		LDY	#01
+0061FF  2  20 89 64     		JSR	FSET
+006202  2  A9 21        		LDA	#<(WRITE-1)	;&$FF		;ICPUT (write-routine)
+006204  2  8D 46 03     		STA	$346
+006207  2  A9 61        		LDA	#>(WRITE-1)	;/256
+006209  2  8D 47 03     		STA	$347
+00620C  2  A2 00        EOPEN:		LDX	#00
+00620E  2  20 56 64     		JSR	FESUB
+006211  2  A5 2A        		LDA	ICAX1Z				;GET AUX 1
+006213  2  29 20        		AND	#32				;CHECK CLEAR BIT
+006215  2  D0 57        		BNE	C005				;DONT DO RESET
+006217  2  A9 00        		LDA	#00
+006219  2  A2 06        		LDX	#06
+00621B  2  9D AC 63     C0035:		STA	VCS,X				;clear VCS
+00621E  2  CA           		DEX
+00621F  2  10 FA        		BPL	C0035
+006221  2  A9 E0        		LDA	#$E0				;normal charset
+006223  2  8D B3 63     		STA	CHSH
+006226  2  A9 4F        		LDA	#$4F				;79 right margin
+006228  2  8D B4 63     		STA	RMARGS
+00622B  2  8D B5 63     		STA	COMPOS
+00622E  2               
+00622E  2  20 9B 62     		JSR	resxep80
+006231  2  B0 40        		BCS	noxep80				;GOT IT
+006233  2               
+006233  2               ;		JSR	JTOGL				;SWITCH PORTS
+006233  2               ;		BNE	IO00				;DO IT AGAIN
+006233  2  AD 14 D0     IO01:		LDA	PAL				;CHECK COMPUTER TYPE
+006236  2  29 0E        		AND	#$0E
+006238  2  D0 05        		BNE	IOP1
+00623A  2  A9 D7        		LDA	#PAL80
+00623C  2  20 A4 60     		JSR	CMD				;SET 80 COL TO 50HZ
+00623F  2  4C A3 63     IOP1:		JMP	ENAB
+006242  2               ;
+006242  2  A2 06        XIO19:		LDX	#06          			;revert
+006244  2  20 56 64     		JSR	FESUB
+006247  2  A9 53        		LDA	#$53  				;'S:' Handler
+006249  2  20 7D 64     		JSR	FIND
+00624C  2  AD BA 63     		LDA	TEMPSV
+00624F  2  9D 1B 03     		STA	HATABS+1,X
+006252  2  AD BB 63     		LDA	TEMPSV+1
+006255  2  9D 1C 03     		STA	HATABS+2,X
+006258  2  AD D8 62     		LDA	TMTAB+6
+00625B  2  8D 46 03     		STA	$346
+00625E  2  AD D9 62     		LDA	TMTAB+7
+006261  2  8D 47 03     		STA	$347
+006264  2  A9 45        C004:		LDA	#$45
+006266  2  A0 03        		LDY	#03
+006268  2  20 89 64     		JSR	FSET
+00626B  2  4C A9 63     		JMP	EXIT
+00626E  2  A9 D2        C005:		LDA	#SCR80				;IN CASE A PRINT
+006270  2  4C E9 60     		JMP	COMSD				;HAS OCCURED
+006273  2               
+006273  2               
+006273  2  A9 53        noxep80:	LDA	#$53				;S:-Handler
+006275  2  20 7D 64     		JSR	FIND
+006278  2  AD BA 63     		LDA	TEMPSV
+00627B  2  9D 1B 03     		STA	HATABS+1,X
+00627E  2  AD BB 63     		LDA	TEMPSV+1
+006281  2  9D 1C 03     		STA	HATABS+2,X
+006284  2               
+006284  2  A9 45        		LDA	#$45				;E-Handler
+006286  2  20 7D 64     		JSR	FIND
+006289  2  A5 CC        		LDA	IN				;ZP-pointer
+00628B  2  9D 1B 03     		STA	HATABS+1,X
+00628E  2  A5 CD        		LDA	IN+1
+006290  2  9D 1C 03     		STA	HATABS+2,X
+006293  2               
+006293  2  A2 06        		ldx	#6				;no XEP80
+006295  2  20 56 64     		JSR	FESUB
+006298  2               
+006298  2  4C A3 63     		jmp	ENAB
+00629B  2               
+00629B  2  A2 34        resxep80:	LDX	#CA2LOW				;CA2 = low, (RS232 idle)
+00629D  2  8E 02 D3     		STX	PACTL
+0062A0  2               
+0062A0  2  A0 0A        		ldy	#10
+0062A2  2  A2 00        		LDX	#00
+0062A4  2  CA           resxep80a:	dex
+0062A5  2  D0 FD        		bne	resxep80a
+0062A7  2  88           		dey
+0062A8  2  D0 FA        		bne	resxep80a
+0062AA  2               
+0062AA  2  20 9C 63     		JSR	DISAB
+0062AD  2  A9 C2        		LDA	#RST80				;RESET 80 COL
+0062AF  2  4C 1B 60     		jmp	CINP				;REQUEST, GET CHAR
+0062B2  2               ;
+0062B2  2  0B 62        EDTAB:		.WORD EOPEN-1				;OPEN
+0062B4  2  A8 63        		.WORD EXIT-1				;CLOSE
+0062B6  2  2E 63        		.WORD EGET-1				;GET LINE OF TEXT
+0062B8  2  21 61        		.WORD WRITE-1				;PUT (NO CURS)
+0062BA  2  A8 63        		.WORD EXIT-1				;STATUS
+0062BC  2  E0 60        		.WORD COM-1				;SPECIAL (CMD OUT)
+0062BE  2  4C A9 63     		JMP	EXIT				;INIT
+0062C1  2  00           		.BYTE 0
+0062C2  2               ;
+0062C2  2               PRTAB:;		.WORD POPEN-1				;OPEN
+0062C2  2               ;		.WORD EXIT-1				;CLOSE
+0062C2  2               ;		.WORD ERTS-1				;GET
+0062C2  2               ;		.WORD PWRT-1				;PUT
+0062C2  2               ;		.WORD POPEN-1				;STATUS
+0062C2  2               ;		.WORD PCOM-1				;SPECIAL
+0062C2  2               ;		JMP	EXIT				;INIT
+0062C2  2               ;		.BYTE 0
+0062C2  2               ;
+0062C2  2  E1 62        SCTAB:		.WORD SOPEN-1				;OPEN
+0062C4  2  A8 63        		.WORD EXIT-1				;CLOSE
+0062C6  2  13 63        		.WORD SREAD-1				;GET-LOCATE
+0062C8  2  24 63        		.WORD SWRIT-1				;PUT-PLOT
+0062CA  2  A8 63        		.WORD EXIT-1				;STATUS
+0062CC  2  AA 63        		.WORD ERTS-1				;SPECIAL
+0062CE  2  4C A9 63     SCT1:		JMP	EXIT				;INIT
+0062D1  2  00           		.BYTE 0
+0062D2  2               ;
+0062D2  2  A8 63 A8 63  TMTAB:		.WORD EXIT-1,EXIT-1
+0062D6  2  A8 63 A8 63  		.WORD EXIT-1,EXIT-1
+0062DA  2  A8 63 A8 63  		.WORD EXIT-1,EXIT-1
+0062DE  2  4C A9 63     		JMP	EXIT
+0062E1  2  00           		.BYTE 0
+0062E2  2               ;
+0062E2  2  A5 2B        SOPEN:		LDA	ICAX2Z
+0062E4  2  29 08        		AND	#08
+0062E6  2  F0 E6        		BEQ	SCT1
+0062E8  2  A5 2A        		LDA	ICAX1Z
+0062EA  2  29 10        		AND	#16
+0062EC  2  D0 E0        		BNE	SCT1
+0062EE  2  A9 00        		LDA	#00				;SEND 0
+0062F0  2  20 9C 63     		JSR	DISAB
+0062F3  2  20 A7 60     		JSR	OUTPUT
+0062F6  2  20 1E 60     		JSR	INPUT
+0062F9  2  A9 99        		LDA	#SGR80				;SET GRAPHICS
+0062FB  2  20 A4 60     		JSR	CMD
+0062FE  2  AD 14 D0     		LDA	PAL
+006301  2  29 0E        		AND	#$0E
+006303  2  D0 05        		BNE	SOP1
+006305  2  A9 9A        		LDA	#PAG80
+006307  2  20 A4 60     		JSR	CMD
+00630A  2  A9 C4        SOP1:		LDA	#CLR80				;FILL WITH 0 SENT
+00630C  2  20 1B 60     		JSR	CINP				;REQUEST, GET CHAR
+00630F  2  A9 01        		LDA	#01
+006311  2  4C 01 61     		JMP	COMBR
+006314  2               ;
+006314  2  20 9C 63     SREAD:		JSR	DISAB
+006317  2  20 CF 63     		JSR	ALIGN				;SET PARMS
+00631A  2  20 08 60     		JSR	READ				;GET CHAR
+00631D  2  C9 9B        		CMP	#EOL				;CHECK EOL
+00631F  2  D0 AD        		BNE	SCT1				;RETURN NORMAL
+006321  2  A9 20        		LDA	#SPACE				;REPLACE WITH SPACE
+006323  2  D0 A9        		BNE	SCT1				;RETURN NORMAL
+006325  2               ;
+006325  2  48           SWRIT:		PHA					;SAVE CHAR
+006326  2  A9 1B        		LDA	#ESC				;FORCE PRINT
+006328  2  20 22 61     		JSR	WRITE
+00632B  2  68           		PLA					;RESTORE CHAR
+00632C  2  4C 22 61     		JMP	WRITE				;SEND IT
+00632F  2               ;
+00632F  2  AD B5 63     EGET:		LDA	COMPOS
+006332  2  F0 41        		BEQ	EBACK
+006334  2  A5 55        		LDA	HCP
+006336  2  8D B7 63     		STA	HCPS
+006339  2  8D B8 63     		STA	HCPE
+00633C  2  20 93 63     EG1:		JSR	KCALL				;GET KB BYTE
+00633F  2  C9 9B        		CMP	#EOL
+006341  2  F0 0F        		BEQ	EGBAK
+006343  2  20 22 61     		JSR	WRITE				;SEND TO 80 COL
+006346  2  A4 55        		LDY	HCP				;THIS CODE IS FOR
+006348  2  CC B8 63     		CPY	HCPE				;SPECIAL CASE LINES
+00634B  2  90 EF        		BCC	EG1				;DONT UPDATE IF LESS
+00634D  2  8C B8 63     		STY	HCPE
+006350  2  B0 EA        		BCS	EG1
+006352  2  8C B9 63     EGBAK:		STY	KSTAT				;SAVE STATUS
+006355  2  C0 80        		CPY	#$80				;CHECK STAT
+006357  2  B0 2E        		BCS	EBA0				;DO EOL IF EOF/BREAK
+006359  2  20 9C 63     		JSR	DISAB				;DISAB FOR CMD
+00635C  2  A9 00        		LDA	#00
+00635E  2  8D B5 63     		STA	COMPOS
+006361  2  AD B1 63     		LDA	MODE
+006364  2  F0 04        		BEQ	EG2
+006366  2  A9 00        		LDA	#00
+006368  2  F0 03        		BEQ	EG3
+00636A  2  AD B7 63     EG2:		LDA	HCPS
+00636D  2  20 A4 60     EG3:		JSR	CMD				;X CURS TO OLD VAL
+006370  2  A9 DB        		LDA	#MCF80				;Y CURS TO FIRST
+006372  2  20 A4 60     		JSR	CMD
+006375  2  20 08 60     EBACK:		JSR	READ				;GO GET A CHAR
+006378  2  C9 9B        		CMP	#EOL
+00637A  2  D0 13        		BNE	EGXT				;NOT DONE YET
+00637C  2  A4 55        		LDY	HCP
+00637E  2  CC B8 63     		CPY	HCPE				;CHECK RIGHTMOST
+006381  2  B0 04        		BCS	EBA0				;CURSOR POSITION
+006383  2  A9 20        		LDA	#SPACE				;IF NOT THERE
+006385  2  D0 08        		BNE	EGXT				;THEN FAKE SPACE
+006387  2  8D B5 63     EBA0:		STA	COMPOS				;SET NON 0
+00638A  2  20 22 61     		JSR	WRITE
+00638D  2  A9 9B        		LDA	#EOL				;RETURN WITH EOL
+00638F  2  AC B9 63     EGXT:		LDY	KSTAT				;GET STATUS
+006392  2  60           		RTS
+006393  2               ;
+006393  2  AD 25 E4     KCALL:		LDA	$E425
+006396  2  48           		PHA
+006397  2  AD 24 E4     		LDA	$E424
+00639A  2  48           		PHA
+00639B  2  60           		RTS
+00639C  2               ;
+00639C  2  A0 00        DISAB:		LDY	#00
+00639E  2  8C 0E D4     		STY	NMIEN
+0063A1  2  78           		SEI
+0063A2  2  60           		RTS
+0063A3  2               ;
+0063A3  2  A0 C0        ENAB:		LDY	#$C0
+0063A5  2  8C 0E D4     		STY	NMIEN
+0063A8  2  58           		CLI
+0063A9  2  A0 01        EXIT:		LDY	#01
+0063AB  2  60           ERTS:		RTS
+0063AC  2               ;
+0063AC  2  00           VCS:		.BYTE 0
+0063AD  2  00           HCS:		.BYTE 0
+0063AE  2  00           DEV:		.BYTE 0
+0063AF  2  00           LMARGS:		.BYTE 0
+0063B0  2  00           LISTS:		.BYTE 0
+0063B1  2  00           MODE:		.BYTE 0
+0063B2  2  00           CRSS:		.BYTE 0
+0063B3  2               ;
+0063B3  2  00           CHSH:		.BYTE 0
+0063B4  2  00           RMARGS:		.BYTE 0
+0063B5  2  00           COMPOS:		.BYTE 0
+0063B6  2               ;
+0063B6  2  00           DATIN:		.BYTE 0
+0063B7  2  00           HCPS:		.BYTE 0
+0063B8  2  00           HCPE:		.BYTE 0
+0063B9  2  00           KSTAT:		.BYTE 0
+0063BA  2               ;INMSK:		.BYTE 0
+0063BA  2               ;OUTMS:		.BYTE 0
+0063BA  2               ;TOGGLE:		.BYTE 0
+0063BA  2               ;TIOCB:		.BYTE 0
+0063BA  2               ;TCHAR:		.BYTE 0
+0063BA  2               ;
+0063BA  2  00 00        TEMPSV:		.WORD 0
+0063BC  2               ;
+0063BC  2               ;INMST:		.BYTE 02,$20
+0063BC  2               ;OUTMT:		.BYTE 01,$10
+0063BC  2               ;
+0063BC  2  00 00 00 4F  FETAB:		.BYTE 0,0,0,$4F,24,3
+0063C0  2  18 03        
+0063C2  2  3E 00 02 27  		.BYTE 62,0,2,39,30,6
+0063C6  2  1E 06        
+0063C8  2               ;
+0063C8  2  45 53 50     LOOKUP:		.BYTE "ESP"
+0063CB  2  B2 C2 C2 D2  LOWAD:		.BYTE EDTAB&$FF,SCTAB&$FF,PRTAB&$FF,TMTAB&$FF
+0063CF  2               ;
+0063CF  2  A4 55        ALIGN:		LDY HCP					;GET HCURS
+0063D1  2  CC AD 63     		CPY HCS					;COMPARE TO SHADOW
+0063D4  2  F0 1B        		BEQ A1					;NO CHANGE
+0063D6  2  8C AD 63     		STY HCS					;SAVE NEW VALUE
+0063D9  2  48           		PHA					;SAVE CHAR
+0063DA  2  98           		TYA
+0063DB  2  C9 50        		CMP #$50
+0063DD  2  90 0E        		BCC A00
+0063DF  2  4A           		LSR A
+0063E0  2  4A           		LSR A
+0063E1  2  4A           		LSR A
+0063E2  2  4A           		LSR A
+0063E3  2  09 50        		ORA #XCH80
+0063E5  2  48           		PHA
+0063E6  2  98           		TYA
+0063E7  2  29 0F        		AND #$0F
+0063E9  2  20 A4 60     		JSR CMD
+0063EC  2  68           		PLA
+0063ED  2  20 A4 60     A00:		JSR CMD					;SEND NEW CURSOR
+0063F0  2  68           		PLA
+0063F1  2  A4 54        A1:		LDY VCP					;GET VCURS
+0063F3  2  C0 19        		CPY #25					;CHECK UPPER LIMIT
+0063F5  2  90 02        		BCC A15
+0063F7  2  A0 18        		LDY #24					;STATUS LINE
+0063F9  2  CC AC 63     A15:		CPY VCS					;COMPARE TO SHADOW
+0063FC  2  F0 0B        		BEQ A2					;NO CHANGE
+0063FE  2  8C AC 63     		STY VCS					;SAVE NEW VALUE
+006401  2  48           		PHA					;SAVE CHAR
+006402  2  98           		TYA
+006403  2  09 80        		ORA #YCR80				;SET CMD BIT
+006405  2  20 A4 60     		JSR CMD					;SEND NEW CURSOR
+006408  2  68           		PLA
+006409  2  A4 52        A2:		LDY LMARGN
+00640B  2  C4 53        		CPY RMARGN
+00640D  2  90 04        		BCC A24
+00640F  2  A0 00        		LDY #00
+006411  2  84 52        		STY LMARGN
+006413  2  CC AF 63     A24:		CPY LMARGS
+006416  2  F0 1A        		BEQ A3
+006418  2  8C AF 63     		STY LMARGS
+00641B  2  48           		PHA
+00641C  2  98           		TYA
+00641D  2  29 0F        		AND #$0F
+00641F  2  09 60        		ORA #LMG80
+006421  2  20 A4 60     		JSR CMD
+006424  2  A5 52        		LDA LMARGN
+006426  2  4A           		LSR A
+006427  2  4A           		LSR A
+006428  2  4A           		LSR A
+006429  2  4A           		LSR A
+00642A  2  F0 05        		BEQ A25
+00642C  2  09 70        		ORA #LMH80
+00642E  2  20 A4 60     		JSR CMD
+006431  2  68           A25:		PLA
+006432  2  A4 53        A3:		LDY RMARGN
+006434  2  CC B4 63     		CPY RMARGS
+006437  2  F0 1C        		BEQ A4
+006439  2  8C B4 63     		STY RMARGS
+00643C  2  48           		PHA
+00643D  2  98           		TYA
+00643E  2  29 0F        		AND #$0F
+006440  2  09 A0        		ORA #RMG80
+006442  2  20 A4 60     		JSR CMD
+006445  2  A5 53        		LDA RMARGN
+006447  2  4A           		LSR A
+006448  2  4A           		LSR A
+006449  2  4A           		LSR A
+00644A  2  4A           		LSR A
+00644B  2  C9 04        		CMP #04
+00644D  2  F0 05        		BEQ A35
+00644F  2  09 B0        		ORA #RMH80
+006451  2  20 A4 60     		JSR CMD
+006454  2  68           A35:		PLA
+006455  2  60           A4:		RTS
+006456  2               ;
+006456  2  BD BC 63     FESUB:		LDA FETAB,X
+006459  2  8D 2F 02     		STA SDMCTL
+00645C  2  8D 00 D4     		STA DMACTL
+00645F  2  BD BD 63     		LDA FETAB+1,X
+006462  2  85 54        		STA VCP
+006464  2  BD BE 63     		LDA FETAB+2,X
+006467  2  85 55        		STA HCP
+006469  2  85 52        		STA LMARGN
+00646B  2  BD BF 63     		LDA FETAB+3,X
+00646E  2  85 53        		STA RMARGN
+006470  2  BD C0 63     		LDA FETAB+4,X
+006473  2  8D D9 02     		STA KEYDEL
+006476  2  BD C1 63     		LDA FETAB+5,X
+006479  2  8D DA 02     		STA KEYREP
+00647C  2  60           		RTS
+00647D  2               ;
+00647D  2  A2 00        FIND:		LDX #00
+00647F  2  DD 1A 03     F1:		CMP HATABS,X
+006482  2  F0 13        		BEQ F2
+006484  2  E8           		INX
+006485  2  E8           		INX
+006486  2  E8           		INX
+006487  2  D0 F6        		BNE F1
+006489  2               ;
+006489  2  20 7D 64     FSET:		JSR FIND
+00648C  2  B9 CB 63     SET:		LDA LOWAD,Y
+00648F  2  9D 1B 03     		STA HATABS+1,X
+006492  2  A9 62        		LDA #EDTAB/256
+006494  2  9D 1C 03     		STA HATABS+2,X
+006497  2  60           F2:		RTS
+006498  2               ;
+006498  2               ;JTOGL:		LDA #01
+006498  2               ;		EOR TOGGLE
+006498  2               ;		STA TOGGLE
+006498  2               ;JINIT:		LDX TOGGLE
+006498  2               ;		LDY INMST,X
+006498  2               ;		STY INMSK
+006498  2               ;		LDY OUTMT,X
+006498  2               ;		STY OUTMS
+006498  2               ;		LDA #$FF
+006498  2               ;		STA PORTA
+006498  2               ;		LDX #$38
+006498  2               ;		STX PACTL
+006498  2               ;		STY PORTA
+006498  2               
+006498  2               ;		LDX #$3C
+006498  2               ;		LDX #CA2LOW				;CA2 = low, (RS232 idle)
+006498  2               ;		STX PACTL
+006498  2               ;		RTS
+006498  2               ;
+006498  2               		CEND=*
+006498  2               ;
+006498  2               		.END

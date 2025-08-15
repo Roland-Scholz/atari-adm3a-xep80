@@ -335,6 +335,7 @@ bittime1:	dex					;x * (2+3) = 11*5 = 55
 siocinp:	jsr	siocmd
 sioinput:	lda	#$34				;wait for low-edge
 		sta	PACTL
+		lda	PORTA
 		ldy	#31
 		ldx	#0
 		
@@ -1069,14 +1070,14 @@ IO00:		jsr	resetxep
 		jsr	resetxep
 		bcc	IO01				;GOT IT
 							;not founf yet, try SIO bus
-		ldx	#11
-IO00a:		lda	siohand,x
-		sta	OUTPUT,x
-		dex
-		bpl	IO00a
-		jsr	resetxep
-		bcc	IO01				;GOT IT
-		jmp	ENAB				;bail out carry set!
+;		ldx	#11
+;IO00a:		lda	siohand,x
+;		sta	OUTPUT,x
+;		dex
+;		bpl	IO00a
+;		jsr	resetxep
+;		bcc	IO01				;GOT IT
+IO00b:		jmp	IO00b				;bail out carry set!
 
 IO01:		lda	PAL				;CHECK COMPUTER TYPE
 		and	#$0E
@@ -1113,8 +1114,8 @@ JINIT:		ldx 	TOGGLE
 		ldx	#$38
 		stx	PACTL
 		sty	PORTA
-;		ldx	#$3C			
-		ldx	#$34				;for SIO, output CA2=0 (inverse!)
+		ldx	#$3C			
+;		ldx	#$34				;for SIO, output CA2=0 (inverse!)
 		stx	PACTL
 		rts
 ;

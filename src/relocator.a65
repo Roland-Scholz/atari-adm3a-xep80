@@ -1,0 +1,219 @@
+;.OPT NOEJECT
+        
+		; System-Adressen
+DOSINI  	= $0C
+IN      	= $CC
+OUT     	= $CE
+OFFSET  	= $D0
+MEMTOP  	= $2E5
+CBEGIN  	= LENGTH+2
+EOL		= $9b
+	
+		.org $3000
+	
+		; Haupt-Einsprungspunkt
+ENTER:		;jsr	geoutch
+
+		;lda LENGTH+1
+		;jsr puthex
+		;lda LENGTH
+		;jsr puthex
+		;jsr newline
+		;jsr KCALL
+		
+		sec
+		lda MEMTOP
+		sbc LENGTH
+		lda MEMTOP+1
+		sbc LENGTH+1
+		sta OUT+1
+		sta OFFSET
+		tay
+		dey
+		sty MEMTOP+1
+		ldy #$FF
+		sty MEMTOP
+		iny
+		sty OUT
+		
+		; Initialisierung für Kopiervorgang
+		ldx #$00
+		lda #<CBEGIN		;&$FF
+		sta IN
+		lda #>CBEGIN		;/256
+		sta IN+1
+		jsr MOVI
+		
+		; Haupt-Relocator-Schleife
+HERE:   	tax
+		bmi MORE
+		jsr MOVI
+		clc
+		adc OFFSET
+		ldx #$00
+		jsr MOV
+		bmi HERE
+		
+MORE:   	inx
+		beq OVER
+		dex
+		jsr MOVI
+		bmi HERE
+		
+		; Byte-Transfer-Routinen
+MOV:    	sta (OUT),Y
+;		pha
+;		lda #'O'
+;		jsr print
+;		lda OUT+1
+;		jsr puthex
+;		lda OUT
+;		jsr puthex
+;		jsr space
+;		pla
+;		jsr puthex
+;		jsr newline
+;		jsr KCALL
+
+		inc OUT
+		bne MOVI
+		inc OUT+1
+		
+MOVI:;		lda #'I'
+	;	jsr print
+	;	tya
+	;	jsr puthex
+	;	jsr space
+	;	lda IN+1
+	;	jsr puthex
+	;	lda IN
+	;	jsr puthex
+	;	jsr space
+		lda (IN),Y
+	;	jsr puthex
+	;	pha
+	;	jsr space
+	;	pla
+		inc IN
+		bne MOVO
+		inc IN+1
+		
+MOVO:   	dex
+		bpl MOV
+		
+ARND:   	rts
+	
+		; DOS-Integration
+OVER:   	;jmp OVER
+		lda #$01
+		sta OUT
+		lda OFFSET
+		sta OUT+1
+		lda DOSINI
+		sta (OUT),Y
+		inc OUT
+		lda DOSINI+1
+		sta (OUT),Y
+		inc OUT
+		tya
+		sta DOSINI
+		lda OFFSET
+		sta DOSINI+1
+		jmp (OUT)
+
+;============================================================
+;
+;============================================================
+;geoutch:	ldx	$E406				;CHAR PUT routine
+;		ldy	$E407
+;		inx
+;		stx	OUTCH+1
+;		bne	geoutch1
+;		iny
+;geoutch1:	sty	OUTCH+2
+;		rts
+;		
+;;============================================================
+;;
+;;============================================================
+;puthex:		pha
+;		txa
+;		pha
+;		tya
+;		pha
+;	
+;		tsx
+;		lda	$103,X
+;		pha
+;		lsr	
+;		lsr	
+;		lsr	
+;		lsr	
+;		jsr	putnib
+;		pla
+;		and	#$0f
+;		jsr	putnib
+;	
+;		pla
+;		tya
+;		pla
+;		tax
+;		pla
+;		rts
+;	
+;	
+;putnib:		clc
+;		adc	#'0'
+;		cmp	#'9'+1
+;		bcc	putnib1
+;		adc	#6
+;putnib1:	jmp	print
+;
+;;============================================================
+;;
+;;============================================================
+;space:		lda	#' '
+;		bne	print
+;newline:	lda	#EOL
+;print:		pha
+;		txa
+;		pha
+;		tya
+;		pha
+;		tsx
+;		lda	$103,X
+;		jsr	OUTCH
+;		pla
+;		tay
+;		pla
+;		tax
+;		pla
+;		rts
+;;============================================================
+;;
+;;============================================================
+;KCALL:		pha
+;		txa
+;		pha
+;		tya
+;		pha
+;		jsr	KCALL1
+;		pla
+;		tay
+;		pla
+;		tax
+;		pla
+;		rts
+;		
+;KCALL1:		lda	$E425
+;		pha
+;		lda	$E424
+;		pha
+;		rts
+;	
+;;============================================================
+;; jump to E:-handler put routine
+;;============================================================
+;OUTCH:		jmp 0
+	
+LENGTH  = *

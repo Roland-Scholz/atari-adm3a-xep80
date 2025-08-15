@@ -1,0 +1,224 @@
+ca65 V2.17 - Git 59ab140
+Main file   : ..\src\relocator.a65
+Current file: ..\src\relocator.a65
+
+000000r 1               ;.OPT NOEJECT
+000000r 1               
+000000r 1               		; System-Adressen
+000000r 1               DOSINI  	= $0C
+000000r 1               IN      	= $CC
+000000r 1               OUT     	= $CE
+000000r 1               OFFSET  	= $D0
+000000r 1               MEMTOP  	= $2E5
+000000r 1               CBEGIN  	= LENGTH+2
+000000r 1               EOL		= $9b
+000000r 1               
+000000r 1               		.org $3000
+003000  1               
+003000  1               		; Haupt-Einsprungspunkt
+003000  1               ENTER:		;jsr	geoutch
+003000  1               
+003000  1               		;lda LENGTH+1
+003000  1               		;jsr puthex
+003000  1               		;lda LENGTH
+003000  1               		;jsr puthex
+003000  1               		;jsr newline
+003000  1               		;jsr KCALL
+003000  1               
+003000  1  38           		sec
+003001  1  AD E5 02     		lda MEMTOP
+003004  1  ED 76 30     		sbc LENGTH
+003007  1  AD E6 02     		lda MEMTOP+1
+00300A  1  ED 77 30     		sbc LENGTH+1
+00300D  1  85 CF        		sta OUT+1
+00300F  1  85 D0        		sta OFFSET
+003011  1  A8           		tay
+003012  1  88           		dey
+003013  1  8C E6 02     		sty MEMTOP+1
+003016  1  A0 FF        		ldy #$FF
+003018  1  8C E5 02     		sty MEMTOP
+00301B  1  C8           		iny
+00301C  1  84 CE        		sty OUT
+00301E  1               
+00301E  1               		; Initialisierung für Kopiervorgang
+00301E  1  A2 00        		ldx #$00
+003020  1  A9 78        		lda #<CBEGIN		;&$FF
+003022  1  85 CC        		sta IN
+003024  1  A9 30        		lda #>CBEGIN		;/256
+003026  1  85 CD        		sta IN+1
+003028  1  20 4C 30     		jsr MOVI
+00302B  1               
+00302B  1               		; Haupt-Relocator-Schleife
+00302B  1  AA           HERE:   	tax
+00302C  1  30 0D        		bmi MORE
+00302E  1  20 4C 30     		jsr MOVI
+003031  1  18           		clc
+003032  1  65 D0        		adc OFFSET
+003034  1  A2 00        		ldx #$00
+003036  1  20 44 30     		jsr MOV
+003039  1  30 F0        		bmi HERE
+00303B  1               
+00303B  1  E8           MORE:   	inx
+00303C  1  F0 1A        		beq OVER
+00303E  1  CA           		dex
+00303F  1  20 4C 30     		jsr MOVI
+003042  1  30 E7        		bmi HERE
+003044  1               
+003044  1               		; Byte-Transfer-Routinen
+003044  1  91 CE        MOV:    	sta (OUT),Y
+003046  1               ;		pha
+003046  1               ;		lda #'O'
+003046  1               ;		jsr print
+003046  1               ;		lda OUT+1
+003046  1               ;		jsr puthex
+003046  1               ;		lda OUT
+003046  1               ;		jsr puthex
+003046  1               ;		jsr space
+003046  1               ;		pla
+003046  1               ;		jsr puthex
+003046  1               ;		jsr newline
+003046  1               ;		jsr KCALL
+003046  1               
+003046  1  E6 CE        		inc OUT
+003048  1  D0 02        		bne MOVI
+00304A  1  E6 CF        		inc OUT+1
+00304C  1               
+00304C  1               MOVI:;		lda #'I'
+00304C  1               	;	jsr print
+00304C  1               	;	tya
+00304C  1               	;	jsr puthex
+00304C  1               	;	jsr space
+00304C  1               	;	lda IN+1
+00304C  1               	;	jsr puthex
+00304C  1               	;	lda IN
+00304C  1               	;	jsr puthex
+00304C  1               	;	jsr space
+00304C  1  B1 CC        		lda (IN),Y
+00304E  1               	;	jsr puthex
+00304E  1               	;	pha
+00304E  1               	;	jsr space
+00304E  1               	;	pla
+00304E  1  E6 CC        		inc IN
+003050  1  D0 02        		bne MOVO
+003052  1  E6 CD        		inc IN+1
+003054  1               
+003054  1  CA           MOVO:   	dex
+003055  1  10 ED        		bpl MOV
+003057  1               
+003057  1  60           ARND:   	rts
+003058  1               
+003058  1               		; DOS-Integration
+003058  1               OVER:   	;jmp OVER
+003058  1  A9 01        		lda #$01
+00305A  1  85 CE        		sta OUT
+00305C  1  A5 D0        		lda OFFSET
+00305E  1  85 CF        		sta OUT+1
+003060  1  A5 0C        		lda DOSINI
+003062  1  91 CE        		sta (OUT),Y
+003064  1  E6 CE        		inc OUT
+003066  1  A5 0D        		lda DOSINI+1
+003068  1  91 CE        		sta (OUT),Y
+00306A  1  E6 CE        		inc OUT
+00306C  1  98           		tya
+00306D  1  85 0C        		sta DOSINI
+00306F  1  A5 D0        		lda OFFSET
+003071  1  85 0D        		sta DOSINI+1
+003073  1  6C CE 00     		jmp (OUT)
+003076  1               
+003076  1               ;============================================================
+003076  1               ;
+003076  1               ;============================================================
+003076  1               ;geoutch:	ldx	$E406				;CHAR PUT routine
+003076  1               ;		ldy	$E407
+003076  1               ;		inx
+003076  1               ;		stx	OUTCH+1
+003076  1               ;		bne	geoutch1
+003076  1               ;		iny
+003076  1               ;geoutch1:	sty	OUTCH+2
+003076  1               ;		rts
+003076  1               ;
+003076  1               ;;============================================================
+003076  1               ;;
+003076  1               ;;============================================================
+003076  1               ;puthex:		pha
+003076  1               ;		txa
+003076  1               ;		pha
+003076  1               ;		tya
+003076  1               ;		pha
+003076  1               ;
+003076  1               ;		tsx
+003076  1               ;		lda	$103,X
+003076  1               ;		pha
+003076  1               ;		lsr
+003076  1               ;		lsr
+003076  1               ;		lsr
+003076  1               ;		lsr
+003076  1               ;		jsr	putnib
+003076  1               ;		pla
+003076  1               ;		and	#$0f
+003076  1               ;		jsr	putnib
+003076  1               ;
+003076  1               ;		pla
+003076  1               ;		tya
+003076  1               ;		pla
+003076  1               ;		tax
+003076  1               ;		pla
+003076  1               ;		rts
+003076  1               ;
+003076  1               ;
+003076  1               ;putnib:		clc
+003076  1               ;		adc	#'0'
+003076  1               ;		cmp	#'9'+1
+003076  1               ;		bcc	putnib1
+003076  1               ;		adc	#6
+003076  1               ;putnib1:	jmp	print
+003076  1               ;
+003076  1               ;;============================================================
+003076  1               ;;
+003076  1               ;;============================================================
+003076  1               ;space:		lda	#' '
+003076  1               ;		bne	print
+003076  1               ;newline:	lda	#EOL
+003076  1               ;print:		pha
+003076  1               ;		txa
+003076  1               ;		pha
+003076  1               ;		tya
+003076  1               ;		pha
+003076  1               ;		tsx
+003076  1               ;		lda	$103,X
+003076  1               ;		jsr	OUTCH
+003076  1               ;		pla
+003076  1               ;		tay
+003076  1               ;		pla
+003076  1               ;		tax
+003076  1               ;		pla
+003076  1               ;		rts
+003076  1               ;;============================================================
+003076  1               ;;
+003076  1               ;;============================================================
+003076  1               ;KCALL:		pha
+003076  1               ;		txa
+003076  1               ;		pha
+003076  1               ;		tya
+003076  1               ;		pha
+003076  1               ;		jsr	KCALL1
+003076  1               ;		pla
+003076  1               ;		tay
+003076  1               ;		pla
+003076  1               ;		tax
+003076  1               ;		pla
+003076  1               ;		rts
+003076  1               ;
+003076  1               ;KCALL1:		lda	$E425
+003076  1               ;		pha
+003076  1               ;		lda	$E424
+003076  1               ;		pha
+003076  1               ;		rts
+003076  1               ;
+003076  1               ;;============================================================
+003076  1               ;; jump to E:-handler put routine
+003076  1               ;;============================================================
+003076  1               ;OUTCH:		jmp 0
+003076  1               
+003076  1               LENGTH  = *
+003076  1               

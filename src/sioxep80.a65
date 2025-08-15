@@ -1,0 +1,909 @@
+;============================================================
+; Handler for XEP80 connected to SIO bus
+;
+; MOTOR ON (CA2) is used as bit-banged serial line to XEP80
+; CA2 is sent inverted via a PNP transistor to XEP80
+; PROCEED (CA1) is used as feedback from XEP80 to ATARI
+;
+;============================================================
+;.OPT NOLIST
+;	.OPT NOEJECT
+;
+;	BASE=$6000
+;
+;CHAR EQUATES
+;
+	LF=10
+	CR=13
+	ESC=$1B
+	SPACE=$20
+	CNTL=$5E
+	CLS=$7D
+	EOL=$9B
+;
+;80 COL COMMANDS
+;
+	XCH80=$50
+	LMG80=$60
+	LMH80=$70
+	YCR80=$80
+	SGR80=$99
+	PAG80=$9A
+	RMG80=$A0
+	RMH80=$B0
+	GET80=$C0
+	CUR80=$C1
+	RST80=$C2
+	PST80=$C3
+	CLR80=$C4
+	LIS80=$D0
+	SCR80=$D2
+	SCB80=$D3
+	GRF80=$D4
+	ICM80=$D5
+	PAL80=$D7
+	CRS80=$D9
+	MCF80=$DB
+	PNT80=$DD
+;
+;MEMORY EQUATES
+;
+	DOSINI=$0C
+	ICDNOZ=$21
+	ICCOMZ=$22
+	ICAX1Z=$2A
+	ICAX2Z=$2B
+	ICIDNO=$2E
+	LMARGN=$52
+	RMARGN=$53
+	VCP=$54
+	HCP=$55
+	IN=$CC
+	CDTMV3=$21C
+	SDMCTL=$22F
+	KEYDEL=$2D9
+	KEYREP=$2DA
+	DVSTAT=$2EA
+	CRSINH=$2F0
+	CHBAS=$2F4
+	LISTF=$2FE
+	SFLAG=$2FF
+	HATABS=$31A
+	ICDNO=$341
+	ICCOM=$342
+	PAL=$D014
+	IRQEN=$D20E
+	SKSTAT=$D20F
+	PORTA=$D300
+	PACTL=$D302
+	DMACTL=$D400
+	WSYNC=$D40A
+	VCOUNT=$D40B
+	NMIEN=$D40E
+	
+;
+; CA2 equates
+;
+;
+	CA2LOW=$34
+	CA2HIGH=$3C
+	
+	.org BASE-2
+;
+		.WORD CEND-BEGIN			;RELOCATER INFO
+;
+BEGIN:		JSR 	ERTS				;DOSINI VECTOR
+		JMP 	CINIT				;RELOCATER JUMP
+;	
+PAUX1:		.BYTE 0
+PAUX2:		.BYTE 0
+;	
+READ:		JSR	DISAB				;DISABLE IRQ INTS
+		LDA	#GET80
+		JSR	CINP				;REQUEST, GET CHAR
+		PHA					;SAVE CHAR
+		JSR	INPUT				;GET CURS
+		JSR	CURCK				;CHECK FOR X>$4F
+		PLA					;RESTORE CHAR
+		JMP	ENAB
+;			
+;============================================================
+; SIO XEP80 input routine
+; 15625kHz equals 64uS equals 114 CPU cycles
+; 9 cycles refresh per scanline, remain 105 
+;============================================================
+CINP:		jsr	CMD
+INPUT:		lda	#CA2LOW				;wait for low-edge
+		sta	PACTL
+		lda	PORTA				;clear possible pending edge-detect
+		ldy	#31
+		ldx	#0
+		
+sioin1:		lda	PACTL				;4
+		bmi	sioin2				;3 got low-edge
+		dex					;try some time
+		bne	sioin1				
+		dey
+		bne	sioin1				;if no response
+		sec					;quit carry set
+		rts
+		
+sioin2:		lda	PORTA				;4 reset IRQA1 bit
+		
+		lda	#CA2LOW+2			;2 set rising edge detect
+		sta	PACTL				;4
+		jsr	bittime				;6 + 63
+
+		ldy	#9				;2 input 9 bits
+							;= 86
+							;plus next jsr, we arrive at 155 cycles, about 1 1/2 bits
+							
+sioin3:		jsr	bittime				;6 + 63 = 69
+		lda	PACTL				;3
+		bmi	sioin4				;3 or 2 = 75
+
+		eor	#2				;2 toggle CA1 bit
+		lsr					;2
+		lsr					;2
+		ror	DATIN				;6 shiftin
+		lda	$0				;3 waste
+		nop					;6 waste
+		nop
+		nop
+		jmp	sioin5				;3
+		
+sioin4:		lsr					;2 put edge-detect in carry
+		lsr					;2
+		ror	DATIN				;6 shift in datin
+		lda	PORTA				;4 reset IRQA bit
+		lda	PACTL				;4 check other edge
+		eor	#2				;2
+		sta	PACTL				;4
+							;24 + 75 = 99
+sioin5:		dey					;2
+		bne	sioin3				;3 	
+							; loop = 99 + 5 = 104
+		rol	DATIN
+		lda	DATIN
+		bcc	sioin9				;character data
+		bpl	sioin6				;HORIZ WITH NO VERT
+		and	#$7F				;CLEAR UPPER FLAG
+		cmp	#$51				;TEST HORIZ/VERT
+		bcc	sioin7 				;HORIZONTAL
+		and	#$1F				;CLEAR MID FLAG
+		bcs	sioin8				;SAVE VERT
+sioin7:		jsr	sioin6				;SAVE HORIZ
+		bcc	INPUT				;GET VERT
+sioin6:		iny					;OFFSET FOR HORIZ
+sioin8:		sta	VCP,Y				;CURS POSITION
+		sta	VCS,Y				;CURS SHADOW
+		clc					;INDICATE RESPONSE
+sioin9:		rts
+
+;============================================================
+; bittime, wait 63 cycles
+;============================================================
+bittime:	ldx	#11				;2
+bittime1:	dex					;x * (2+3) = 11*5 = 55
+		bne	bittime1
+		rts					;6, 8+55=63
+	
+CURCK:		LDA	HCP				;CHECK HORIZ CURSOR
+		CMP	#$50				;FOR >$4F
+		BCC	sioin9				;IF NOT
+		LDA	#CUR80				;GO GET REAL VALUE
+		JSR	CINP
+		JMP	sioin6				;AND STORE IT (Y=0)
+	
+;============================================================
+; Output CMD or CHAR
+;============================================================		
+CMD:		SEC					;THIS CODE MUST NOT
+		BCS	OUT				;CROSS A PAGE BOUNDARY
+OUTPUT:		CLC					;CMD FLAG=0 FOR CHAR
+OUT:		LDY	#CA2HIGH			;CA2=1
+		JSR	SEND				;SEND START BIT (=0)
+		LDX	#08				;SETUP BIT COUNT OF 9
+		NOP	                                
+		NOP	                                
+		NOP					;2+2+2+2=8
+OUT0:		ROR	A				;PUT BIT INTO CARRY
+		BCS	HI                              
+		BCC	LO				;2+3=5 CYCLES TO LO
+LO:		LDY	#CA2HIGH			;5+2 CYCLES TO JSR
+		JSR	SEND				;SEND A 0
+		BCC	OUT1				;3 CYCLES
+HI:		LDY	#CA2LOW				;3+4 CYCLES TO JSR
+		JSR	SEND				;SEND A 1
+		BCS	OUT1				;3 CYCLES
+OUT1:		DEX					;NEXT BIT 2 CYC
+		BPL	OUT0				;MORE 3 OR 2 CYC
+		BMI	OUT2				;SEND STOP BIT 3 CYC
+OUT2:		LDY	#CA2LOW				;SEND A 1
+		BNE	OUT3                            
+OUT3:		JSR	SEND				;2+3+4+3=12
+		RTS	                                
+							
+SEND:		STY	PACTL				;OUTPUT BIT
+		LDY	#12				;TIMER FOR 15.7KB
+S1:		DEY	                                
+		BNE	S1				;5*Y-1 CYCLES
+		BEQ	S2				;3
+S2:		NOP	                                
+		NOP	                                
+		NOP	                                
+		NOP					;2+2+2+2=8
+S3:		RTS					;6 CYCLES
+;		                                        
+COM:		LDA	ICCOMZ				;GET COM BYTE
+		CMP	#$14				;CHECK DEBUG OUT
+		BNE	COM1				;TRY NEXT XIO
+		LDA	ICAX2Z				;GET AUX 2
+COMSD:		JSR	DISAB				;STOP INTERRUPTS
+		JSR	CMD					;GO SEND
+		JMP	ENAB				;ENABLE AND NORM EXIT
+COM1:		CMP	#$15				;TEST VALID
+		BNE	COM2				;NEXT
+		LDA	ICAX2Z				;GET AUX 2
+		BNE	COMBR				;GO DO BURST
+		STA	MODE				;MAKE NORMAL
+		LDA	#SCR80				;GET CMD
+		BNE	COMSD				;GO SEND
+COMBR:		STA	MODE				;MAKE BURST
+		LDA	#SCB80				;GET CMD
+		BNE	COMSD				;GO SEND
+COM2:		CMP	#$16				;CHECK DEBUG IN
+		BNE	COM3				;NEXT
+		LDA	ICAX2Z				;GET BYTE TO SEND
+		JSR	DISAB                           
+		JSR	CINP				;REQUEST, GET CHAR
+		STA	DVSTAT+1			;FOR NOW
+		JMP	ENAB                            
+COM3:		CMP	#$19				;CHECK 80/40
+		BNE	COM4                            
+		JMP	XIO19				;DO IT
+COM4:		RTS	                                
+;		                                        
+;PCOM:		LDA	ICCOMZ				;GET CMD
+;		CMP	#$17				;TEST VALID
+;		BNE	S3				;NO MORE FOR NOW
+;		LDA	ICAX2Z				;GET AUX 2
+;		CMP	#08				;CHECK RESERVED
+;		BCS	S3				;NO GOOD
+;		AND	#03				;CHECK 3 AND 7
+;		EOR	#03                             
+;		BEQ	S3				;NOT ALLOWED
+;		LDA	ICAX1Z				;GET AUX1
+;		CMP	#08				;CHECK UPPER LIMIT
+;		BCS	S3				;NO GOOD
+;		STA	PAUX1                           
+;		LDA	ICAX2Z				;GET AUX 2
+;		STA	PAUX2                           
+;		JMP	EXIT                            
+;		                                        
+WRITE:		LDY	SFLAG				;CHECK CNTL 1
+		BNE	WRITE				;IF ON
+		JSR	DISAB                           
+		LDY	DEV				;ARE WE SCREEN?
+		BEQ	WR2				;YES
+		PHA	                                
+		LDA	#00                             
+		STA	DEV                             
+		LDA	#SCR80                          
+		JSR	CMD                             
+		PLA	                                
+WR2:		LDY	LISTF				;CHECK LIST FLAG
+		CPY	LISTS                           
+		BEQ	WR3                             
+		STY	LISTS				;SAVE NEW VALUE
+		PHA	                                
+		TYA	                                
+		BEQ	WR25                            
+		LDA	#01				;FORCE LSB
+WR25:		ORA	#LIS80                          
+		JSR	CMD				;SEND NEW VALUE
+		PLA	                                
+WR3:		JSR	ALIGN				;SET PARMS
+		LDY	CHBAS				;CHECK CHAR SET
+		CPY	CHSH                            
+		BEQ	WR5                             
+		CPY	#$E0                            
+		BNE	WR4                             
+		STY	CHSH                            
+		PHA	                                
+		LDA	#GRF80                          
+WR35:		JSR	CMD                             
+		PLA	                                
+		JMP	WR5                             
+WR4:		CPY	#$CC                            
+		BNE	WR5                             
+		STY	CHSH                            
+		PHA	                                
+		LDA	#ICM80                          
+		BNE	WR35                            
+WR5:		LDY	CRSINH				;CHECK CURS FLAG
+		CPY	CRSS                            
+		BEQ	WR6                             
+		STY	CRSS                            
+		PHA	                                
+		TYA	                                
+		BEQ	WR55                            
+		LDA	#01                             
+WR55:		EOR	#CRS80				;CURSOR ON/OFF
+		JSR	CMD                             
+		PLA	                                
+WR6:		JSR	OUTPUT				;SEND CHAR
+		LDA	MODE				;TEST FOR BURST
+		BNE	WWAT				;IF SO
+		JSR	INPUT				;GET NEW CURSOR
+		JSR	CURCK				;CHECK FOR X>$4F
+		JMP	ENAB                            
+WWAT:		JSR	ENAB				;ENABLE INTS
+		LDY	#25				;OR SUCH
+		JSR	S1                              
+;WW1:		LDA	PORTA                           
+;		AND	INMSK                           
+;		BEQ	WW1                             
+WW2:		LDY	#01                             
+		RTS	                                
+;		                                        
+;POPEN:		STX	TIOCB                           
+;		LDX	ICDNOZ                          
+;		JSR	MATRIX                          
+;		BCS	HANDGO                          
+;		LDY	SDMCTL                          
+;		BNE	WW2                             
+;		LDA	#PST80                          
+;		JSR	DISAB                           
+;		JSR	CINP				;REQUEST, GET CHAR
+;		BNE	POP1                            
+;		LDA	#139				;NOBODY HOME
+;POP1:		JSR	ENAB                            
+;		TAY	                                
+;		RTS	                                
+;		                                        
+;HANDGO:		LDA	ICDNOZ                          
+;		STX	ICDNOZ                          
+;		PHA	                                
+;		LDA	ICCOMZ                          
+;		AND	#08                             
+;		TAX	                                
+;		JSR	HAND                            
+;		PLA	                                
+;		STA	ICDNOZ                          
+;		RTS	                                
+;		                                        
+;PWRT:		TAY					;SAVE CHAR
+;		STX	TIOCB                           
+;		LDA	ICDNO,X                         
+;		TAX	                                
+;		JSR	MATRIX                          
+;		TYA	                                
+;		BCC	PWP                             
+;		STA	TCHAR				;SAVE CHAR FOR CALL
+;		LDY	TIOCB				;GET UNIT #
+;		LDA	ICDNO,Y                         
+;		PHA					;SAVE UNIT #
+;		TXA					;GET NEW VALUE
+;		STA	ICDNO,Y				;REPLACE WITH NEW
+;		STA	ICDNOZ				;AND ZERO PAGE
+;		LDX	#06                             
+;		JSR	HAND				;GO PRINT
+;		PLA					;RESTORE UNIT #
+;		LDX	TIOCB				;GET POINTER
+;		STA	ICDNO,X				;RESTORE OLD
+;		STA	ICDNOZ                          
+;		RTS	                                
+;PWP:		LDY	DEV				;CHECK OUTPUT DEV
+;		BNE	PW0                             
+;		PHA	                                
+;		LDY	SDMCTL                          
+;		BEQ	PW2                             
+;PW1:		LDY	VCOUNT                          
+;		CPY	#129                            
+;		BNE	PW1                             
+;PW2:		JSR	DISAB                           
+;		LDA	#PNT80                          
+;		STA	DEV                             
+;		JSR	CMD                             
+;		JSR	ENAB                            
+;		PLA					;RESTORE CHAR
+;PW0:		TAY					;SAVE CHAR
+;		LDA	PAUX2				;GET CNTL
+;		ROR	A				;CHECK NO XLATE
+;		TYA					;RESTORE CHAR
+;		BCS	DOIT				;DONT XLATE
+;		CMP	#EOL				;CHECK EOL
+;		BNE	XLATE				;XLATE IF NOT
+;		LDA	#CR				;REPLACE WITH CR
+;		JSR	DOIT				;SEND
+;		LDA	PAUX2				;GET CNTL
+;		AND	#04				;CHECK NO APPEND
+;		BNE	WGDS				;DONT APPEND
+;		LDA	#LF				;GET LF
+;		BNE	DOIT				;SEND
+;XLATE:		LDA	PAUX2				;GET CNTL
+;		CMP	#02				;CHECK LIGHT XLATE
+;		TYA					;RESTORE CHAR
+;		BCC	DOIT				;DONE WITH XLATE
+;		AND	#$7F				;REMOVE MSB
+;		CMP	#$20				;CHECK ASCII CHAR
+;		BCS	DOIT				;GO PRINT ASCII
+;		PHA					;SAVE CHAR
+;		LDA	#CNTL				;GET "CNTL" CHAR
+;		JSR	DOIT				;SEND
+;		PLA					;RESTORE CHAR
+;		ORA	#$40				;MAKE ALPHA
+;DOIT:		LDY	SDMCTL                          
+;		BEQ	DO1                             
+;DO0:		LDY	VCOUNT                          
+;		CPY	#129                            
+;		BNE	DO0                             
+;DO1:		JSR	DISAB                           
+;		JSR	OUTPUT                          
+;		JSR	ENAB                            
+;WAIT:		LDY	#25				;FOR NOW
+;		JSR	S1                              
+;		LDY	#02                             
+;W0:		LDX	#255				;FOR NOW
+;		STX	CDTMV3				;SETUP VBLANK COUNT
+;W1:		LDA	PORTA                           
+;		AND	INMSK                           
+;		BNE	WGDS				;AVAILABLE
+;		LDA	CDTMV3				;CHECK COUNTDOWN
+;		BNE	W1                              
+;		DEY	                                
+;		BNE	W0                              
+;WTMO:		LDY	#138				;DO TIMEOUT
+;		BNE	WRTS				;COULD DO BRKKEY ALSO
+;WGDS:		LDY	#01                             
+;WRTS:		RTS	                                
+;		                                        
+;MATRIX:		CPX	#02                             
+;		BEQ	PNEXT                           
+;		BCS	POVER                           
+;		LDA	PAUX1                           
+;		LSR	A                               
+;POVER:		RTS	                                
+;PNEXT:		LDA	#03                             
+;		CMP	PAUX1                           
+;		BCC	POVER                           
+;		LDA	PAUX1                           
+;		AND	#02                             
+;		BEQ	POVER                           
+;		DEX	                                
+;		RTS	                                
+;		                                        
+;HAND:		LDA	$E431,X                         
+;		PHA	                                
+;		LDA	$E430,X                         
+;		PHA	                                
+;		LDA	TCHAR				;RESTORE CHAR
+;		LDX	TIOCB				;GET IOCB POINTER
+;		RTS					;CALL PRINTER HANDLER
+;		                                        
+FORCOM:		LDA	ICCOMZ                          
+		CMP	#$18				;Fill Command
+		BEQ	XIO18                           
+		RTS	                                
+;		                                        
+CINIT:		;LDA	#00                             
+		;STA	TOGGLE                          
+;		JSR	JINIT				;INIT Joy-Port
+;		JSR	resxep80
+;		BCC	CINIT1				;GOT IT
+;noxep80a:	stx	$d01a
+;		inx
+;		JMP	noxep80a
+
+CINIT1:
+;		LDA	#$50                            
+;		LDY	#02 				;Printer                            
+;		JSR	FSET                            
+		lda	#8
+		STA	$2C0
+		
+		LDA	#$53				;S:-Handler
+		JSR	FIND                            
+		LDA	HATABS+1,X                      
+		STA	TEMPSV                          
+		LDA	HATABS+2,X                      
+		STA	TEMPSV+1                        
+		LDA	#$45				;E-Handler
+		JSR	FIND                            
+		LDA	HATABS+1,X                      
+		STA	IN				;ZP-pointer
+		LDA	HATABS+2,X                      
+		STA	IN+1                            
+		LDY	#15                             
+C003:		LDA	(IN),Y                          
+		STA	TMTAB,Y				;copy E-Handler entries to TMTAB
+		DEY	                                
+		BPL	C003                            
+		LDA	#<(FORCOM-1)	;&$FF           
+		STA	TMTAB+10                        
+		LDA	#>(FORCOM-1)	;/256           
+		STA	TMTAB+11                        
+		LDA	SKSTAT				;shift pressed?
+		AND	#08                             
+		BEQ	C004				;yes, jump
+XIO18:		LDA	#$45				;E:
+		LDY	#00                             
+		JSR	FSET                            
+		LDA	#$53				;S:
+		LDY	#01                             
+		JSR	FSET                            
+		LDA	#<(WRITE-1)	;&$FF		;ICPUT (write-routine)
+		STA	$346                            
+		LDA	#>(WRITE-1)	;/256           
+		STA	$347                            
+EOPEN:		LDX	#00                             
+		JSR	FESUB                           
+		LDA	ICAX1Z				;GET AUX 1
+		AND	#32				;CHECK CLEAR BIT
+		BNE	C005				;DONT DO RESET
+		LDA	#00                             
+		LDX	#06                             
+C0035:		STA	VCS,X				;clear VCS
+		DEX	                                
+		BPL	C0035                           
+		LDA	#$E0				;normal charset
+		STA	CHSH                            
+		LDA	#$4F				;79 right margin
+		STA	RMARGS                          
+		STA	COMPOS                          
+		
+		JSR	resxep80
+		BCS	noxep80				;GOT IT
+		
+;		JSR	JTOGL				;SWITCH PORTS
+;		BNE	IO00				;DO IT AGAIN
+IO01:		LDA	PAL				;CHECK COMPUTER TYPE
+		AND	#$0E                            
+		BNE	IOP1                            
+		LDA	#PAL80                          
+		JSR	CMD				;SET 80 COL TO 50HZ
+IOP1:		JMP	ENAB                            
+;		                                        
+XIO19:		LDX	#06          			;revert                   
+		JSR	FESUB                           
+		LDA	#$53  				;'S:' Handler                          
+		JSR	FIND                            
+		LDA	TEMPSV                          
+		STA	HATABS+1,X                      
+		LDA	TEMPSV+1                        
+		STA	HATABS+2,X                      
+		LDA	TMTAB+6                         
+		STA	$346                            
+		LDA	TMTAB+7                         
+		STA	$347                            
+C004:		LDA	#$45                            
+		LDY	#03                             
+		JSR	FSET                            
+		JMP	EXIT                            
+C005:		LDA	#SCR80				;IN CASE A PRINT
+		JMP	COMSD				;HAS OCCURED
+		
+		
+noxep80:	LDA	#$53				;S:-Handler
+		JSR	FIND                            
+		LDA	TEMPSV                          
+		STA	HATABS+1,X                      
+		LDA	TEMPSV+1                        
+		STA	HATABS+2,X                      
+
+		LDA	#$45				;E-Handler
+		JSR	FIND                            
+		LDA	IN				;ZP-pointer
+		STA	HATABS+1,X                      
+		LDA	IN+1
+		STA	HATABS+2,X
+
+		ldx	#6				;no XEP80
+		JSR	FESUB
+
+		jmp	ENAB
+
+resxep80:	LDX	#CA2LOW				;CA2 = low, (RS232 idle)
+		STX	PACTL
+
+		ldy	#10				;wait some time
+		LDX	#00  
+resxep80a:	dex
+		bne	resxep80a
+		dey
+		bne	resxep80a
+
+		JSR	DISAB
+		LDA	#RST80				;RESET 80 COL
+		jmp	CINP				;REQUEST, GET CHAR
+;	                                                
+EDTAB:		.WORD EOPEN-1				;OPEN
+		.WORD EXIT-1				;CLOSE
+		.WORD EGET-1				;GET LINE OF TEXT
+		.WORD WRITE-1				;PUT (NO CURS)
+		.WORD EXIT-1				;STATUS
+		.WORD COM-1				;SPECIAL (CMD OUT)
+		JMP	EXIT				;INIT
+		.BYTE 0                                 
+;	                                                
+PRTAB:;		.WORD POPEN-1				;OPEN
+;		.WORD EXIT-1				;CLOSE
+;		.WORD ERTS-1				;GET
+;		.WORD PWRT-1				;PUT
+;		.WORD POPEN-1				;STATUS
+;		.WORD PCOM-1				;SPECIAL
+;		JMP	EXIT				;INIT
+;		.BYTE 0                                 
+;	                                                
+SCTAB:		.WORD SOPEN-1				;OPEN
+		.WORD EXIT-1				;CLOSE
+		.WORD SREAD-1				;GET-LOCATE
+		.WORD SWRIT-1				;PUT-PLOT
+		.WORD EXIT-1				;STATUS
+		.WORD ERTS-1				;SPECIAL
+SCT1:		JMP	EXIT				;INIT
+		.BYTE 0                                 
+;	                                                
+TMTAB:		.WORD EXIT-1,EXIT-1                     
+		.WORD EXIT-1,EXIT-1                     
+		.WORD EXIT-1,EXIT-1                     
+		JMP	EXIT                            
+		.BYTE 0                                 
+;	                                                
+SOPEN:		LDA	ICAX2Z                          
+		AND	#08                             
+		BEQ	SCT1                            
+		LDA	ICAX1Z                          
+		AND	#16                             
+		BNE	SCT1                            
+		LDA	#00				;SEND 0
+		JSR	DISAB                           
+		JSR	OUTPUT                          
+		JSR	INPUT                           
+		LDA	#SGR80				;SET GRAPHICS
+		JSR	CMD                             
+		LDA	PAL                             
+		AND	#$0E                            
+		BNE	SOP1                            
+		LDA	#PAG80                          
+		JSR	CMD                             
+SOP1:		LDA	#CLR80				;FILL WITH 0 SENT
+		JSR	CINP				;REQUEST, GET CHAR
+		LDA	#01                             
+		JMP	COMBR                           
+;		                                        
+SREAD:		JSR	DISAB                           
+		JSR	ALIGN				;SET PARMS
+		JSR	READ				;GET CHAR
+		CMP	#EOL				;CHECK EOL
+		BNE	SCT1				;RETURN NORMAL
+		LDA	#SPACE				;REPLACE WITH SPACE
+		BNE	SCT1				;RETURN NORMAL
+;		                                        
+SWRIT:		PHA					;SAVE CHAR
+		LDA	#ESC				;FORCE PRINT
+		JSR	WRITE                           
+		PLA					;RESTORE CHAR
+		JMP	WRITE				;SEND IT
+;		                                        
+EGET:		LDA	COMPOS                          
+		BEQ	EBACK                           
+		LDA	HCP                             
+		STA	HCPS                            
+		STA	HCPE                            
+EG1:		JSR	KCALL				;GET KB BYTE
+		CMP	#EOL                            
+		BEQ	EGBAK                           
+		JSR	WRITE				;SEND TO 80 COL
+		LDY	HCP				;THIS CODE IS FOR
+		CPY	HCPE				;SPECIAL CASE LINES
+		BCC	EG1				;DONT UPDATE IF LESS
+		STY	HCPE                            
+		BCS	EG1                             
+EGBAK:		STY	KSTAT				;SAVE STATUS
+		CPY	#$80				;CHECK STAT
+		BCS	EBA0				;DO EOL IF EOF/BREAK
+		JSR	DISAB				;DISAB FOR CMD
+		LDA	#00                             
+		STA	COMPOS                          
+		LDA	MODE                            
+		BEQ	EG2                             
+		LDA	#00                             
+		BEQ	EG3                             
+EG2:		LDA	HCPS                            
+EG3:		JSR	CMD				;X CURS TO OLD VAL
+		LDA	#MCF80				;Y CURS TO FIRST
+		JSR	CMD                             
+EBACK:		JSR	READ				;GO GET A CHAR
+		CMP	#EOL                            
+		BNE	EGXT				;NOT DONE YET
+		LDY	HCP                             
+		CPY	HCPE				;CHECK RIGHTMOST
+		BCS	EBA0				;CURSOR POSITION
+		LDA	#SPACE				;IF NOT THERE
+		BNE	EGXT				;THEN FAKE SPACE
+EBA0:		STA	COMPOS				;SET NON 0
+		JSR	WRITE                           
+		LDA	#EOL				;RETURN WITH EOL
+EGXT:		LDY	KSTAT				;GET STATUS
+		RTS	
+;		
+KCALL:		LDA	$E425
+		PHA	
+		LDA	$E424
+		PHA	
+		RTS	
+;		
+DISAB:		LDY	#00
+		STY	NMIEN
+		SEI	
+		RTS	
+;		
+ENAB:		LDY	#$C0
+		STY	NMIEN
+		CLI	
+EXIT:		LDY	#01
+ERTS:		RTS
+;	
+VCS:		.BYTE 0
+HCS:		.BYTE 0
+DEV:		.BYTE 0
+LMARGS:		.BYTE 0
+LISTS:		.BYTE 0
+MODE:		.BYTE 0
+CRSS:		.BYTE 0
+;	
+CHSH:		.BYTE 0
+RMARGS:		.BYTE 0
+COMPOS:		.BYTE 0
+;	
+DATIN:		.BYTE 0
+HCPS:		.BYTE 0
+HCPE:		.BYTE 0
+KSTAT:		.BYTE 0
+;INMSK:		.BYTE 0
+;OUTMS:		.BYTE 0
+;TOGGLE:		.BYTE 0
+;TIOCB:		.BYTE 0
+;TCHAR:		.BYTE 0
+;	
+TEMPSV:		.WORD 0
+;	
+;INMST:		.BYTE 02,$20
+;	OUTMT:		.BYTE 01,$10
+;	
+FETAB:		.BYTE 0,0,0,$4F,24,3
+		.BYTE 62,0,2,39,30,6
+;	
+LOOKUP:		.BYTE "ESP"
+LOWAD:		.BYTE EDTAB&$FF,SCTAB&$FF,PRTAB&$FF,TMTAB&$FF
+;	
+ALIGN:		LDY HCP					;GET HCURS
+		CPY HCS					;COMPARE TO SHADOW
+		BEQ A1					;NO CHANGE
+		STY HCS					;SAVE NEW VALUE
+		PHA					;SAVE CHAR
+		TYA	
+		CMP #$50	
+		BCC A00	
+		LSR A	
+		LSR A	
+		LSR A	
+		LSR A	
+		ORA #XCH80	
+		PHA	
+		TYA	
+		AND #$0F	
+		JSR CMD	
+		PLA	
+A00:		JSR CMD					;SEND NEW CURSOR
+		PLA	
+A1:		LDY VCP					;GET VCURS
+		CPY #25					;CHECK UPPER LIMIT
+		BCC A15	
+		LDY #24					;STATUS LINE
+A15:		CPY VCS					;COMPARE TO SHADOW
+		BEQ A2					;NO CHANGE
+		STY VCS					;SAVE NEW VALUE
+		PHA					;SAVE CHAR
+		TYA	
+		ORA #YCR80				;SET CMD BIT
+		JSR CMD					;SEND NEW CURSOR
+		PLA
+A2:		LDY LMARGN
+		CPY RMARGN
+		BCC A24
+		LDY #00
+		STY LMARGN
+A24:		CPY LMARGS
+		BEQ A3
+		STY LMARGS
+		PHA
+		TYA
+		AND #$0F
+		ORA #LMG80
+		JSR CMD
+		LDA LMARGN
+		LSR A
+		LSR A
+		LSR A
+		LSR A
+		BEQ A25
+		ORA #LMH80
+		JSR CMD
+A25:		PLA
+A3:		LDY RMARGN
+		CPY RMARGS
+		BEQ A4
+		STY RMARGS
+		PHA
+		TYA
+		AND #$0F
+		ORA #RMG80
+		JSR CMD
+		LDA RMARGN
+		LSR A
+		LSR A
+		LSR A
+		LSR A
+		CMP #04
+		BEQ A35
+		ORA #RMH80
+		JSR CMD
+A35:		PLA
+A4:		RTS
+;	
+FESUB:		LDA FETAB,X
+		STA SDMCTL
+		STA DMACTL
+		LDA FETAB+1,X
+		STA VCP
+		LDA FETAB+2,X
+		STA HCP
+		STA LMARGN
+		LDA FETAB+3,X
+		STA RMARGN
+		LDA FETAB+4,X
+		STA KEYDEL
+		LDA FETAB+5,X
+		STA KEYREP
+		RTS
+;	
+FIND:		LDX #00
+F1:		CMP HATABS,X
+		BEQ F2
+		INX
+		INX
+		INX
+		BNE F1
+;	
+FSET:		JSR FIND
+SET:		LDA LOWAD,Y
+		STA HATABS+1,X
+		LDA #EDTAB/256
+		STA HATABS+2,X
+F2:		RTS
+;	
+;JTOGL:		LDA #01
+;		EOR TOGGLE
+;		STA TOGGLE
+;JINIT:		LDX TOGGLE
+;		LDY INMST,X
+;		STY INMSK
+;		LDY OUTMT,X
+;		STY OUTMS
+;		LDA #$FF
+;		STA PORTA
+;		LDX #$38
+;		STX PACTL
+;		STY PORTA
+
+;		LDX #$3C
+;		LDX #CA2LOW				;CA2 = low, (RS232 idle)
+;		STX PACTL
+;		RTS
+;	
+		CEND=*
+;	
+		.END
