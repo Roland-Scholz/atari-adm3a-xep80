@@ -63,6 +63,7 @@
 	SDMCTL=$22F
 	KEYDEL=$2D9
 	KEYREP=$2DA
+	MEMTOP=$2E5
 	DVSTAT=$2EA
 	CRSINH=$2F0
 	CHBAS=$2F4
@@ -92,7 +93,7 @@
 ;
 		.WORD CEND-BEGIN			;RELOCATER INFO
 ;
-BEGIN:		JSR 	ERTS				;DOSINI VECTOR
+BEGIN:		JSR 	ERTS				;DOSINI VECTOR		
 		JMP 	CINIT				;RELOCATER JUMP
 ;	
 PAUX1:		.BYTE 0
@@ -487,7 +488,30 @@ FORCOM:		LDA	ICCOMZ
 		BEQ	XIO18                           
 		RTS	                                
 ;		                                        
-CINIT:		;LDA	#00                             
+CINIT:		jsr	resxep80
+		bcc	CINIT1
+
+		ldx	#CA2HIGH
+		stx	PACTL
+		ldx	#6				;no XEP80
+		jsr	FESUB
+		jsr	ENAB
+		
+		lda	BEGIN+1
+		sta	DOSINI
+		lda	BEGIN+2
+		sta	DOSINI+1
+		ldy	#0
+		rts
+
+CINIT1:
+		ldx	DOSINI+1
+		dex
+		stx	MEMTOP+1
+		ldx	#$ff
+		stx	MEMTOP
+
+		;LDA	#00                             
 		;STA	TOGGLE                          
 ;		JSR	JINIT				;INIT Joy-Port
 ;		JSR	resxep80
@@ -496,12 +520,13 @@ CINIT:		;LDA	#00
 ;		inx
 ;		JMP	noxep80a
 
-CINIT1:
+
 ;		LDA	#$50                            
 ;		LDY	#02 				;Printer                            
 ;		JSR	FSET                            
 		lda	#8
 		STA	$2C0
+	
 		
 		LDA	#$53				;S:-Handler
 		JSR	FIND                            
@@ -537,8 +562,8 @@ XIO18:		LDA	#$45				;E:
 		STA	$346                            
 		LDA	#>(WRITE-1)	;/256           
 		STA	$347                            
-EOPEN:		LDX	#00                             
-		JSR	FESUB                           
+EOPEN:		;LDX	#00                             
+		;JSR	FESUB                           
 		LDA	ICAX1Z				;GET AUX 1
 		AND	#32				;CHECK CLEAR BIT
 		BNE	C005				;DONT DO RESET
@@ -554,7 +579,7 @@ C0035:		STA	VCS,X				;clear VCS
 		STA	COMPOS                          
 		
 		JSR	resxep80
-		BCS	noxep80				;GOT IT
+;		BCS	noxep80				;GOT IT
 		
 ;		JSR	JTOGL				;SWITCH PORTS
 ;		BNE	IO00				;DO IT AGAIN
@@ -585,26 +610,29 @@ C005:		LDA	#SCR80				;IN CASE A PRINT
 		JMP	COMSD				;HAS OCCURED
 		
 		
-noxep80:	LDA	#$53				;S:-Handler
-		JSR	FIND                            
-		LDA	TEMPSV                          
-		STA	HATABS+1,X                      
-		LDA	TEMPSV+1                        
-		STA	HATABS+2,X                      
+;noxep80:			
+;		LDA	#$53				;S:-Handler
+;		JSR	FIND                            
+;		LDA	TEMPSV                          
+;		STA	HATABS+1,X                      
+;		LDA	TEMPSV+1                        
+;		STA	HATABS+2,X                      
+;
+;		LDA	#$45				;E-Handler
+;		JSR	FIND                            
+;		LDA	IN				;ZP-pointer
+;		STA	HATABS+1,X                      
+;		LDA	IN+1
+;		STA	HATABS+2,X
+;
+;		ldx	#6				;no XEP80
+;		JSR	FESUB
+;
+;		jmp	ENAB
 
-		LDA	#$45				;E-Handler
-		JSR	FIND                            
-		LDA	IN				;ZP-pointer
-		STA	HATABS+1,X                      
-		LDA	IN+1
-		STA	HATABS+2,X
-
-		ldx	#6				;no XEP80
-		JSR	FESUB
-
-		jmp	ENAB
-
-resxep80:	LDX	#CA2LOW				;CA2 = low, (RS232 idle)
+resxep80:	ldx	#0
+		jsr	FESUB
+		LDX	#CA2LOW				;CA2 = low, (RS232 idle)
 		STX	PACTL
 
 		ldy	#10				;wait some time

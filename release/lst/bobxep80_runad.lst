@@ -1,0 +1,8 @@
+ca65 V2.17 - Git 59ab140
+Main file   : ..\src\bobxep80_runad.a65
+Current file: ..\src\bobxep80_runad.a65
+
+000000r 1               		.org $2e0
+0002E0  1               
+0002E0  1  01 40        		.word $4001
+0002E0  1               

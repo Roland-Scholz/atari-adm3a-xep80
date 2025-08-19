@@ -1,0 +1,976 @@
+ca65 V2.17 - Git 59ab140
+Main file   : ..\src\bobxep80.a65
+Current file: ..\src\bobxep80.a65
+
+000000r 1               ;
+000000r 1               ; D:bobxep80.a65
+000000r 1               ;
+000000r 1                        .include "bobxep80_1.a65"
+000000r 2               ;
+000000r 2               ; CA2 equates
+000000r 2               ;
+000000r 2               ;
+000000r 2               	CA2LOW=$34
+000000r 2               	CA2HIGH=$3C
+000000r 2               	;
+000000r 2               ; System equates
+000000r 2               ;
+000000r 2               ; OS EQUATES
+000000r 2               ; ----------
+000000r 2               ;
+000000r 2               ; Syntax:
+000000r 2               ; Use '=' for addresses
+000000r 2               ; and '<' for read addresses (ex: KBCODE)
+000000r 2               ; and '>' for write addresses (ex: STIMER)
+000000r 2               ; and '#' for values
+000000r 2               ;
+000000r 2               ; IO EQUATES
+000000r 2               ;
+000000r 2               ICHID       = $0000
+000000r 2               ICDNO       = $0001
+000000r 2               ICCOM       = $0002
+000000r 2               ICSTA       = $0003
+000000r 2               ICBAL       = $0004
+000000r 2               ICBAH       = $0005
+000000r 2               ICPTL       = $0006
+000000r 2               ICPTH       = $0007
+000000r 2               ICBLL       = $0008
+000000r 2               ICBLH       = $0009
+000000r 2               ICAX1       = $000A
+000000r 2               ICAX2       = $000B
+000000r 2               ICAX3       = $000C
+000000r 2               ICAX4       = $000D
+000000r 2               ICAX5       = $000E
+000000r 2               ICAX6       = $000F
+000000r 2               ;
+000000r 2               ; DISPLAY LIST EQUATES
+000000r 2               ;
+000000r 2               ADLI        = $0080
+000000r 2               AVB         = $0040
+000000r 2               ALMS        = $0040
+000000r 2               AVSCR       = $0020
+000000r 2               AHSCR       = $0010
+000000r 2               AJMP        = $0001
+000000r 2               AEMPTY1     = $0000
+000000r 2               AEMPTY2     = $0010
+000000r 2               AEMPTY3     = $0020
+000000r 2               AEMPTY4     = $0030
+000000r 2               AEMPTY5     = $0040
+000000r 2               AEMPTY6     = $0050
+000000r 2               AEMPTY7     = $0060
+000000r 2               AEMPTY8     = $0070
+000000r 2               ;
+000000r 2               ; OS VARIABLES FOR XL/XE
+000000r 2               ;
+000000r 2               ; PAGE 0
+000000r 2               ;
+000000r 2               NGFLAG      = $0001
+000000r 2               CASINI      = $0002
+000000r 2               RAMLO       = $0004
+000000r 2               TRAMSZ      = $0006
+000000r 2               CMCMD       = $0007
+000000r 2               WARMST      = $0008
+000000r 2               BOOT        = $0009
+000000r 2               DOSVEC      = $000A
+000000r 2               DOSINI      = $000C
+000000r 2               APPMHI      = $000E
+000000r 2               POKMSK      = $0010
+000000r 2               BRKKEY      = $0011
+000000r 2               RTCLOK      = $0012
+000000r 2               BUFADR      = $0015
+000000r 2               ICCOMT      = $0017
+000000r 2               DSKFMS      = $0018
+000000r 2               DSKUTL      = $001A
+000000r 2               ABUFPT      = $001C
+000000r 2               ICHIDZ      = $0020
+000000r 2               ICDNOZ      = $0021
+000000r 2               ICCOMZ      = $0022
+000000r 2               ICSTAZ      = $0023
+000000r 2               ICBALZ      = $0024
+000000r 2               ICBAHZ      = $0025
+000000r 2               ICPTLZ      = $0026
+000000r 2               ICPTHZ      = $0027
+000000r 2               ICBLLZ      = $0028
+000000r 2               ICBLHZ      = $0029
+000000r 2               ICAX1Z      = $002A
+000000r 2               ICAX2Z      = $002B
+000000r 2               ICAX3Z      = $002C
+000000r 2               ICAX4Z      = $002D
+000000r 2               ICAX5Z      = $002E
+000000r 2               ICAX6Z      = $002F
+000000r 2               STATUS      = $0030
+000000r 2               CHKSUM      = $0031
+000000r 2               BUFRLO      = $0032
+000000r 2               BUFRHI      = $0033
+000000r 2               BFENLO      = $0034
+000000r 2               BFENHI      = $0035
+000000r 2               LTEMP       = $0036
+000000r 2               BUFRFL      = $0038
+000000r 2               RECVDN      = $0039
+000000r 2               XMTDON      = $003A
+000000r 2               CHKSNT      = $003B
+000000r 2               NOCKSM      = $003C
+000000r 2               BPTR        = $003D
+000000r 2               FTYPE       = $003E
+000000r 2               FEOF        = $003F
+000000r 2               FREQ        = $0040
+000000r 2               SOUNDR      = $0041
+000000r 2               CRITIC      = $0042
+000000r 2               FMSZPG      = $0043
+000000r 2               ZCHAIN      = $004A
+000000r 2               DSTAT       = $004C
+000000r 2               ATRACT      = $004D
+000000r 2               DRKMSK      = $004E
+000000r 2               COLRSH      = $004F
+000000r 2               TEMP        = $0050
+000000r 2               HOLD1       = $0051
+000000r 2               LMARGN      = $0052
+000000r 2               RMARGN      = $0053
+000000r 2               ROWCRS      = $0054
+000000r 2               COLCRS      = $0055
+000000r 2               DINDEX      = $0057
+000000r 2               SAVMSC      = $0058
+000000r 2               OLDROW      = $005A
+000000r 2               OLDCOL      = $005B
+000000r 2               OLDCHR      = $005D
+000000r 2               OLDADR      = $005E
+000000r 2               FKDEF       = $0060
+000000r 2               PALNTS      = $0062
+000000r 2               LOGCOL      = $0063
+000000r 2               ADRESS      = $0064
+000000r 2               MLTTMP      = $0066
+000000r 2               SAVADR      = $0068
+000000r 2               RAMTOP      = $006A
+000000r 2               BUFCNT      = $006B
+000000r 2               BUFSTR      = $006C
+000000r 2               BITMSK      = $006E
+000000r 2               SHFAMT      = $006F
+000000r 2               ROWAC       = $0070
+000000r 2               COLAC       = $0072
+000000r 2               ENDPT       = $0074
+000000r 2               DELTAR      = $0076
+000000r 2               DELTAC      = $0077
+000000r 2               KEYDEF      = $0079
+000000r 2               SWPFLG      = $007B
+000000r 2               HOLDCH      = $007C
+000000r 2               INSDAT      = $007D
+000000r 2               COUNTR      = $007E
+000000r 2               LOMEM       = $0080
+000000r 2               ;
+000000r 2               ; PAGE 2
+000000r 2               ;
+000000r 2               VDSLST      = $0200
+000000r 2               VPRCED      = $0202
+000000r 2               VINTER      = $0204
+000000r 2               VBREAK      = $0206
+000000r 2               VKEYBD      = $0208
+000000r 2               VSERIN      = $020A
+000000r 2               VSEROR      = $020C
+000000r 2               VSEROC      = $020E
+000000r 2               VTIMR1      = $0210
+000000r 2               VTIMR2      = $0212
+000000r 2               VTIMR4      = $0214
+000000r 2               VIMIRQ      = $0216
+000000r 2               CDTMV1      = $0218
+000000r 2               CDTMV2      = $021A
+000000r 2               CDTMV3      = $021C
+000000r 2               CDTMV4      = $021E
+000000r 2               CDTMV5      = $0220
+000000r 2               VVBLKI      = $0222
+000000r 2               VVBLKD      = $0224
+000000r 2               CDTMA1      = $0226
+000000r 2               CDTMA2      = $0228
+000000r 2               CDTMF3      = $022A
+000000r 2               SRTIMR      = $022B
+000000r 2               CDTMF4      = $022C
+000000r 2               INTEMP      = $022D
+000000r 2               CDTMF5      = $022E
+000000r 2               SDMCTL      = $022F
+000000r 2               SDLSTL      = $0230
+000000r 2               SDLSTH      = $0231
+000000r 2               SSKCTL      = $0232
+000000r 2               SPARE       = $0233
+000000r 2               LPENH       = $0234
+000000r 2               LPENV       = $0235
+000000r 2               BRKKY       = $0236
+000000r 2               VPIRQ       = $0238
+000000r 2               CDEVIC      = $023A
+000000r 2               CCOMND      = $023B
+000000r 2               CAUX1       = $023C
+000000r 2               CAUX2       = $023D
+000000r 2               TMPSIO      = $023E
+000000r 2               ERRFLG      = $023F
+000000r 2               DFLAGS      = $0240
+000000r 2               DBSECT      = $0241
+000000r 2               BOOTAD      = $0242
+000000r 2               COLDST      = $0244
+000000r 2               RECLEN      = $0245
+000000r 2               DSKTIM      = $0246
+000000r 2               PDVMSK      = $0247
+000000r 2               SHPDVS      = $0248
+000000r 2               PDMSK       = $0249
+000000r 2               RELADR      = $024A
+000000r 2               PPTMPA      = $024C
+000000r 2               PPTMPX      = $024D
+000000r 2               CHSALT      = $026B
+000000r 2               VSFLAG      = $026C
+000000r 2               KEYDIS      = $026D
+000000r 2               FINE        = $026E
+000000r 2               GPRIOR      = $026F
+000000r 2               PADDL0      = $0270
+000000r 2               PADDL1      = $0271
+000000r 2               PADDL2      = $0272
+000000r 2               PADDL3      = $0273
+000000r 2               PADDL4      = $0274
+000000r 2               PADDL5      = $0275
+000000r 2               PADDL6      = $0276
+000000r 2               PADDL7      = $0277
+000000r 2               STICK0      = $0278
+000000r 2               STICK1      = $0279
+000000r 2               STICK2      = $027A
+000000r 2               STICK3      = $027B
+000000r 2               PTRIG0      = $027C
+000000r 2               PTRIG1      = $027D
+000000r 2               PTRIG2      = $027E
+000000r 2               PTRIG3      = $027F
+000000r 2               PTRIG4      = $0280
+000000r 2               PTRIG5      = $0281
+000000r 2               PTRIG6      = $0282
+000000r 2               PTRIG7      = $0283
+000000r 2               STRIG0      = $0284
+000000r 2               STRIG1      = $0285
+000000r 2               STRIG2      = $0286
+000000r 2               STRIG3      = $0287
+000000r 2               HIBYTE      = $0288
+000000r 2               WMODE       = $0289
+000000r 2               BLIM        = $028A
+000000r 2               IMASK       = $028B
+000000r 2               JVECK       = $028C
+000000r 2               NEWADR      = $028E
+000000r 2               TXTROW      = $0290
+000000r 2               TXTCOL      = $0291
+000000r 2               TINDEX      = $0293
+000000r 2               TXTMSC      = $0294
+000000r 2               TXTOLD      = $0296
+000000r 2               CRETRY      = $029C
+000000r 2               HOLD3       = $029D
+000000r 2               SUBTMP      = $029E
+000000r 2               HOLD2       = $029F
+000000r 2               DMASK       = $02A0
+000000r 2               TMPLBT      = $02A1
+000000r 2               ESCFLG      = $02A2
+000000r 2               TABMAP      = $02A3
+000000r 2               LOGMAP      = $02B2
+000000r 2               INVFLG      = $02B6
+000000r 2               FILFLG      = $02B7
+000000r 2               TMPROW      = $02B8
+000000r 2               TMPCOL      = $02B9
+000000r 2               SCRFLG      = $02BB
+000000r 2               HOLD4       = $02BC
+000000r 2               DRETRY      = $02BD
+000000r 2               SHFLOC      = $02BE
+000000r 2               BOTSCR      = $02BF
+000000r 2               PCOLR0      = $02C0
+000000r 2               PCOLR1      = $02C1
+000000r 2               PCOLR2      = $02C2
+000000r 2               PCOLR3      = $02C3
+000000r 2               COLOR0      = $02C4
+000000r 2               COLOR1      = $02C5
+000000r 2               COLOR2      = $02C6
+000000r 2               COLOR3      = $02C7
+000000r 2               COLOR4      = $02C8
+000000r 2               RUNADR      = $02C9
+000000r 2               HIUSED      = $02CB
+000000r 2               ZHIUSE      = $02CD
+000000r 2               GBYTEA      = $02CF
+000000r 2               LOADAD      = $02D1
+000000r 2               ZLOADA      = $02D3
+000000r 2               DSCTLN      = $02D5
+000000r 2               ACMISR      = $02D7
+000000r 2               KRPDER      = $02D9
+000000r 2               KEYREP      = $02DA
+000000r 2               NOCLIK      = $02DB
+000000r 2               HELPFG      = $02DC
+000000r 2               DMASAV      = $02DD
+000000r 2               PBPNT       = $02DE
+000000r 2               PBUFSZ      = $02DF
+000000r 2               RUNAD       = $02E0
+000000r 2               INITAD      = $02E2
+000000r 2               RAMSIZ      = $02E4
+000000r 2               MEMTOP      = $02E5
+000000r 2               MEMLO       = $02E7
+000000r 2               HNDLOD      = $02E9
+000000r 2               DVSTAT      = $02EA
+000000r 2               CBAUDL      = $02EE
+000000r 2               CBAUDH      = $02EF
+000000r 2               CRSINH      = $02F0
+000000r 2               KEYDEL      = $02F1
+000000r 2               CH1         = $02F2
+000000r 2               CHACT       = $02F3
+000000r 2               CHBAS       = $02F4
+000000r 2               NEWROW      = $02F5
+000000r 2               NEWCOL      = $02F6
+000000r 2               ROWINC      = $02F8
+000000r 2               COLINC      = $02F9
+000000r 2               CHAR        = $02FA
+000000r 2               ATACHR      = $02FB
+000000r 2               CH          = $02FC
+000000r 2               FILDAT      = $02FD
+000000r 2               DSPFLG      = $02FE
+000000r 2               SSFLAG      = $02FF
+000000r 2               ;
+000000r 2               ; PAGE 3
+000000r 2               ;
+000000r 2               DDEVIC      = $0300
+000000r 2               DUNIT       = $0301
+000000r 2               DCOMND      = $0302
+000000r 2               DSTATS      = $0303
+000000r 2               DBUFLO      = $0304
+000000r 2               DBUFHI      = $0305
+000000r 2               DTIMLO      = $0306
+000000r 2               DUNUSE      = $0307
+000000r 2               DBYTLO      = $0308
+000000r 2               DBYTHI      = $0309
+000000r 2               DAUX1       = $030A
+000000r 2               DAUX2       = $030B
+000000r 2               TIMER1      = $030C
+000000r 2               ADDCOR      = $030E
+000000r 2               CASFLG      = $030F
+000000r 2               TIMER2      = $0310
+000000r 2               TEMP1       = $0312
+000000r 2               TEMP2       = $0314
+000000r 2               TEMP3       = $0315
+000000r 2               SAVIO       = $0316
+000000r 2               TIMFLG      = $0317
+000000r 2               STACKP      = $0318
+000000r 2               TSTAT       = $0319
+000000r 2               HATABS      = $031A
+000000r 2               PUPBT1      = $033D
+000000r 2               PUPBT2      = $033E
+000000r 2               PUPBT3      = $033F
+000000r 2               IOCB0       = $0340
+000000r 2               IOCB1       = $0350
+000000r 2               IOCB2       = $0360
+000000r 2               IOCB3       = $0370
+000000r 2               IOCB4       = $0380
+000000r 2               IOCB5       = $0390
+000000r 2               IOCB6       = $03A0
+000000r 2               IOCB7       = $03B0
+000000r 2               PRNBUF      = $03C0
+000000r 2               SUPERF      = $03E8
+000000r 2               CKEY        = $03E9
+000000r 2               CASSBT      = $03EA
+000000r 2               CARTCK      = $03EB
+000000r 2               DERRF       = $03EC
+000000r 2               ACMVAR      = $03ED
+000000r 2               BASICF      = $03F8
+000000r 2               MINTLK      = $03F9
+000000r 2               GINTLK      = $03FA
+000000r 2               CHLINK      = $03FB
+000000r 2               CASBUF      = $03FD
+000000r 2               ;
+000000r 2               ; HARDWARE REGISTERS
+000000r 2               ;
+000000r 2               ; GTIA
+000000r 2               ;
+000000r 2               M0PF        = $D000
+000000r 2               HPOSP0      = $D000
+000000r 2               M1PF        = $D001
+000000r 2               HPOSP1      = $D001
+000000r 2               M2PF        = $D002
+000000r 2               HPOSP2      = $D002
+000000r 2               M3PF        = $D003
+000000r 2               HPOSP3      = $D003
+000000r 2               P0PF        = $D004
+000000r 2               HPOSM0      = $D004
+000000r 2               P1PF        = $D005
+000000r 2               HPOSM1      = $D005
+000000r 2               P2PF        = $D006
+000000r 2               HPOSM2      = $D006
+000000r 2               P3PF        = $D007
+000000r 2               HPOSM3      = $D007
+000000r 2               M0PL        = $D008
+000000r 2               SIZEP0      = $D008
+000000r 2               M1PL        = $D009
+000000r 2               SIZEP1      = $D009
+000000r 2               M2PL        = $D00A
+000000r 2               SIZEP2      = $D00A
+000000r 2               M3PL        = $D00B
+000000r 2               SIZEP3      = $D00B
+000000r 2               P0PL        = $D00C
+000000r 2               SIZEM       = $D00C
+000000r 2               P1PL        = $D00D
+000000r 2               GRAFP0      = $D00D
+000000r 2               P2PL        = $D00E
+000000r 2               GRAFP1      = $D00E
+000000r 2               P3PL        = $D00F
+000000r 2               GRAFP2      = $D00F
+000000r 2               TRIG0       = $D010
+000000r 2               GRAFP3      = $D010
+000000r 2               TRIG1       = $D011
+000000r 2               GRAFM       = $D011
+000000r 2               TRIG2       = $D012
+000000r 2               COLPM0      = $D012
+000000r 2               TRIG3       = $D013
+000000r 2               COLPM1      = $D013
+000000r 2               PAL         = $D014
+000000r 2               COLPM2      = $D014
+000000r 2               COLPM3      = $D015
+000000r 2               COLPF0      = $D016
+000000r 2               COLPF1      = $D017
+000000r 2               COLPF2      = $D018
+000000r 2               COLPF3      = $D019
+000000r 2               COLBK       = $D01A
+000000r 2               PRIOR       = $D01B
+000000r 2               VDELAY      = $D01C
+000000r 2               GRACTL      = $D01D
+000000r 2               HITCLR      = $D01E
+000000r 2               CONSOL      = $D01F
+000000r 2               ;
+000000r 2               ; POKEY
+000000r 2               ;
+000000r 2               POT0        = $D200
+000000r 2               AUDF1       = $D200
+000000r 2               POT1        = $D201
+000000r 2               AUDC1       = $D201
+000000r 2               POT2        = $D202
+000000r 2               AUDF2       = $D202
+000000r 2               POT3        = $D203
+000000r 2               AUDC2       = $D203
+000000r 2               POT4        = $D204
+000000r 2               AUDF3       = $D204
+000000r 2               POT5        = $D205
+000000r 2               AUDC3       = $D205
+000000r 2               POT6        = $D206
+000000r 2               AUDF4       = $D206
+000000r 2               POT7        = $D207
+000000r 2               AUDC4       = $D207
+000000r 2               ALLPOT      = $D208
+000000r 2               AUDCTL      = $D208
+000000r 2               KBCODE      = $D209
+000000r 2               STIMER      = $D209
+000000r 2               RANDOM      = $D20A
+000000r 2               SKREST      = $D20A
+000000r 2               POTGO       = $D20B
+000000r 2               SERIN       = $D20D
+000000r 2               SEROUT      = $D20D
+000000r 2               IRQST       = $D20E
+000000r 2               IRQEN       = $D20E
+000000r 2               SKSTAT      = $D20F
+000000r 2               SKCTL       = $D20F
+000000r 2               ;
+000000r 2               ; PIA
+000000r 2               ;
+000000r 2               PORTA       = $D300
+000000r 2               PORTB       = $D301
+000000r 2               PACTL       = $D302
+000000r 2               PBCTL       = $D303
+000000r 2               ;
+000000r 2               ; ANTIC
+000000r 2               ;
+000000r 2               DMACLT      = $D400
+000000r 2               CHACTL      = $D401
+000000r 2               DLISTL      = $D402
+000000r 2               DLISTH      = $D403
+000000r 2               HSCROL      = $D404
+000000r 2               VSCROL      = $D405
+000000r 2               PMBASE      = $D407
+000000r 2               CHBASE      = $D409
+000000r 2               WSYNC       = $D40A
+000000r 2               VCOUNT      = $D40B
+000000r 2               PENH        = $D40C
+000000r 2               PENV        = $D40D
+000000r 2               NMIEN       = $D40E
+000000r 2               NMIST       = $D40F
+000000r 2               NMIRES      = $D40F
+000000r 2               ;
+000000r 2               ; FLOATING POINT ROUTINES
+000000r 2               ;
+000000r 2               AFP         = $D800
+000000r 2               FASC        = $D8E6
+000000r 2               IFP         = $D9AA
+000000r 2               FPI         = $D9D2
+000000r 2               ZFR0        = $DA44
+000000r 2               ZF1         = $DA46
+000000r 2               FSUB        = $DA60
+000000r 2               FADD        = $DA66
+000000r 2               FMUL        = $DADB
+000000r 2               FDIV        = $DB28
+000000r 2               PLYEVL      = $DD40
+000000r 2               FLD0R       = $DD89
+000000r 2               FLD0P       = $DD8D
+000000r 2               FLD1R       = $DD98
+000000r 2               FLD1P       = $DD9C
+000000r 2               FSTOR       = $DDA7
+000000r 2               FSTOP       = $DDAB
+000000r 2               FMOVE       = $DDB6
+000000r 2               EXP         = $DDC0
+000000r 2               EXP10       = $DDCC
+000000r 2               LOG         = $DECD
+000000r 2               LOG10       = $DED1
+000000r 2               ;
+000000r 2               ; ROM VECTORS
+000000r 2               ;
+000000r 2               
+000000r 1                        .include "bobxep80_2.a65"
+000000r 2               DSKINV      = $E453
+000000r 2               CIOV        = $E456
+000000r 2               SIOV        = $E459
+000000r 2               SETVBV      = $E45C
+000000r 2               SYSVBV      = $E45F
+000000r 2               XITVBV      = $E462
+000000r 2               SIOINV      = $E465
+000000r 2               SENDEV      = $E468
+000000r 2               INTINV      = $E46B
+000000r 2               CIOINV      = $E46E
+000000r 2               SELFSV      = $E471
+000000r 2               WARMSV      = $E474
+000000r 2               COLDSV      = $E477
+000000r 2               RBLOKV      = $E47A
+000000r 2               CSOPIV      = $E47D
+000000r 2               PUPDIV      = $E480
+000000r 2               SELFTSV     = $E483
+000000r 2               PENTV       = $E486
+000000r 2               PHUNLV      = $E489
+000000r 2               PHINIV      = $E48C
+000000r 2               GPDVV       = $E48F
+000000r 2               ;
+000000r 2               ; Code equates
+000000r 2               ;
+000000r 2               L0088       = $0088
+000000r 2               L0089       = $0089
+000000r 2               L009D       = $009D
+000000r 2               L00A5       = $00A5
+000000r 2               L00AB       = $00AB
+000000r 2               L00AC       = $00AC
+000000r 2               L00AD       = $00AD
+000000r 2               L00AE       = $00AE
+000000r 2               L05A0       = $05A0
+000000r 2               L2031       = $2031
+000000r 2               L2049       = $2049
+000000r 2               L2E20       = $2E20
+000000r 2               L3020       = $3020
+000000r 2               L372F       = $372F
+000000r 2               L3830       = $3830
+000000r 2               L407E       = $407E
+000000r 2               L4096       = $4096
+000000r 2               L40AB       = $40AB
+000000r 2               L40B6       = $40B6
+000000r 2               L4136       = $4136
+000000r 2               L4137       = $4137
+000000r 2               L413B       = $413B
+000000r 2               L41B4       = $41B4
+000000r 2               L41B5       = $41B5
+000000r 2               L41B8       = $41B8
+000000r 2               L41B9       = $41B9
+000000r 2               L41D7       = $41D7
+000000r 2               L41D8       = $41D8
+000000r 2               L41E6       = $41E6
+000000r 2               L41E9       = $41E9
+000000r 2               L41ED       = $41ED
+000000r 2               L41F4       = $41F4
+000000r 2               L4209       = $4209
+000000r 2               L421E       = $421E
+000000r 2               L422D       = $422D
+000000r 2               L4279       = $4279
+000000r 2               L4550       = $4550
+000000r 2               L6572       = $6572
+000000r 2               L696F       = $696F
+000000r 2               L726D       = $726D
+000000r 2               L7274       = $7274
+000000r 2               L7461       = $7461
+000000r 2               LB000       = $B000
+000000r 2               LB018       = $B018
+000000r 2               LB019       = $B019
+000000r 2               LB021       = $B021
+000000r 2               LB022       = $B022
+000000r 2               LB02E       = $B02E
+000000r 2               LB02F       = $B02F
+000000r 2               LB032       = $B032
+000000r 2               LB06D       = $B06D
+000000r 2               LD8FF       = $D8FF
+000000r 2               LDED4       = $DED4
+000000r 2               LFF00       = $FF00
+000000r 2               LFFFF       = $FFFF
+000000r 2               ;
+000000r 2               ; Start of code
+000000r 2               ;
+000000r 2                           .org $4000
+004000  2               ;
+004000  2  60           L4000:      rts
+004001  2  AD 00 B0     L4001:      lda LB000					;quit if $B000 <> $54
+004004  2  C9 54                    cmp #$54
+004006  2  D0 F8                    bne L4000
+004008  2               
+004008  2  A2 34        	    ldx	#CA2LOW					;set stopbit
+00400A  2  8E 02 D3     	    stx	PACTL
+00400D  2               
+00400D  2  8E 0A D4     resxep80a:  stx WSYNC
+004010  2  CA           	    dex
+004011  2  D0 FA        	    bne	resxep80a
+004013  2               
+004013  2  AD 14 D0     	    lda	PAL
+004016  2  25 0E        	    and $0e
+004018  2  D0 06        	    BNE	NTSC
+00401A  2               
+00401A  2  A9 D7                    lda #$D7					;set PAL mode
+00401C  2  20 3B 41                 jsr L413B					;CMD
+00401F  2               
+00401F  2  EA           	    nop
+004020  2               
+004020  2               ;            ldx #$FF					;PORTA all '1'
+004020  2               ;            stx PORTA
+004020  2               
+004020  2               ;            lda PACTL					;0b11111011
+004020  2               ;            and #$FB					;set DDR=0 (Data direction register)
+004020  2               ;            sta PACTL					;reset Bit2
+004020  2               
+004020  2               ;            stx PORTA					;all output
+004020  2               ;            ora #$04
+004020  2               ;            sta PACTL					;select output register
+004020  2               ;            stx PORTA					;PORTA all '1'
+004020  2               
+004020  2  A5 14        NTSC:       lda RTCLOK+2				;wait 1-2 jiffys
+004022  2  69 02                    adc #$02
+004024  2  C5 14        L4024:      cmp RTCLOK+2
+004026  2  D0 FC                    bne L4024
+004028  2               
+004028  2  AD 2E B0                 lda LB02E
+00402B  2  85 1A                    sta DSKUTL
+00402D  2  AD 2F B0                 lda LB02F
+004030  2  85 1B                    sta DSKUTL+1
+004032  2  A0 00                    ldy #$00
+004034  2  B1 1A                    lda (DSKUTL),Y
+004036  2  38                       sec
+004037  2  E9 01                    sbc #$01
+004039  2  91 1A                    sta (DSKUTL),Y
+00403B  2  85 AE                    sta L00AE
+00403D  2  48                       pha
+00403E  2  A8                       tay
+00403F  2  A2 00                    ldx #$00
+004041  2  86 AB                    stx L00AB
+004043  2  86 AD                    stx L00AD
+004045  2  86 88                    stx L0088
+004047  2  86 AC                    stx L00AC
+004049  2  20 32 B0                 jsr LB032
+00404C  2  A5 9D                    lda L009D
+00404E  2  85 89                    sta L0089
+004050  2  68                       pla
+004051  2  18                       clc
+004052  2  65 9D                    adc L009D
+004054  2  8D B6 40                 sta L40B6
+004057  2  8D F4 41                 sta L41F4
+00405A  2  8D 09 42                 sta L4209
+00405D  2  8D 1E 42                 sta L421E
+004060  2  8D 2D 42                 sta L422D
+004063  2  8D ED 41                 sta L41ED
+004066  2  8D 7E 40                 sta L407E
+004069  2  8D AB 40                 sta L40AB
+00406C  2  AD 18 B0                 lda LB018
+00406F  2  8D 36 41                 sta L4136
+004072  2  AD 19 B0                 lda LB019
+004075  2  8D 37 41                 sta L4137
+004078  2  A9 00                    lda #$00
+00407A  2  8D 18 B0                 sta LB018
+00407D  2  A9 50                    lda #$50
+00407F  2  8D 19 B0                 sta LB019
+004082  2  AD 21 B0                 lda LB021
+004085  2  8D D7 41                 sta L41D7
+004088  2  AD 22 B0                 lda LB022
+00408B  2  8D D8 41                 sta L41D8
+00408E  2  AD 2E B0                 lda LB02E
+004091  2  18                       clc
+004092  2  69 6A                    adc #$6A
+004094  2  8D B4 41                 sta L41B4
+004097  2  8D B8 41                 sta L41B8
+00409A  2  AD 2F B0                 lda LB02F
+00409D  2  69 02                    adc #$02
+00409F  2  8D B5 41                 sta L41B5
+0040A2  2  8D B9 41                 sta L41B9
+0040A5  2  A9 79                    lda #$79
+0040A7  2  8D 21 B0                 sta LB021
+0040AA  2  A9 50                    lda #$50
+0040AC  2  8D 22 B0                 sta LB022
+0040AF  2  A0 FB                    ldy #$FB
+0040B1  2  B9 34 41     L40B1:      lda L4134,Y
+0040B4  2  99 00 FF                 sta LFF00,Y
+0040B7  2  88                       dey
+0040B8  2  C0 FF                    cpy #$FF
+0040BA  2  D0 F5                    bne L40B1
+0040BC  2  A0 00                    ldy #$00
+0040BE  2  B9 E0 40     L40BE:      lda L40E0,Y
+0040C1  2  38                       sec
+0040C2  2  20 3B 41                 jsr L413B
+0040C5  2  C8                       iny
+0040C6  2  C0 0D                    cpy #$0D
+0040C8  2  90 F4                    bcc L40BE
+0040CA  2  A5 14                    lda RTCLOK+2
+0040CC  2  69 07                    adc #$07
+0040CE  2  C5 14        L40CE:      cmp RTCLOK+2
+0040D0  2  D0 FC                    bne L40CE
+0040D2  2  A0 46                    ldy #$46
+0040D4  2  B9 ED 40     L40D4:      lda L40ED,Y
+0040D7  2  20 39 41                 jsr L4139
+0040DA  2  88                       dey
+0040DB  2  10 F7                    bpl L40D4
+0040DD  2  A0 01                    ldy #$01
+0040DF  2  60                       rts
+0040E0  2  D9 D4 DE     L40E0:      cmp LDED4,Y
+0040E3  2  D3                       .byte $D3
+0040E4  2  60                       rts
+0040E5  2  70 AF                    bvs L4096
+0040E7  2  B4 00                    ldy $00,X
+0040E9  2  80                       .byte $80
+0040EA  2  D0 C5                    bne L40B1
+0040EC  2  DC                       .byte $DC
+0040ED  2  9B           L40ED:      .byte $9B
+0040EE  2  66 66                    ror MLTTMP
+0040F0  2  75 50                    adc TEMP,X
+0040F2  2  20 74 72                 jsr L7274
+0040F5  2  65 62                    adc PALNTS
+0040F7  2  6F 52                    .byte $6F,$52
+0040F9  2  20 79 42                 jsr L4279
+0040FC  2  20 20 30                 jsr L3020
+0040FF  2  39 2F 37                 and L372F,Y
+004102  2  30 2F                    bmi L4133
+004104  2  35 30                    and STATUS,X
+004106  2  20 20 2E                 jsr L2E20
+004109  2  64                       .byte $64
+00410A  2  65 6C                    adc BUFSTR
+00410C  2  6C 61 74                 jmp (L7461)
+00410F  2  73                       .byte $73
+004110  2  6E 49 20                 ror L2049
+004113  2  32                       .byte $32
+004114  2  2E 31 20                 rol L2031
+004117  2  6E 6F 69                 ror L696F
+00411A  2  73 72                    .byte $73,$72
+00411C  2  65 76                    adc DELTAR
+00411E  2  20 72 65                 jsr L6572
+004121  2  76 69                    ror SAVADR+1,X
+004123  2  72 44                    .byte $72,$44
+004125  2  20 30 38                 jsr L3830
+004128  2  2D 50 45                 and L4550
+00412B  2  58                       cli
+00412C  2  20 6D 72                 jsr L726D
+00412F  2  65 54                    adc ROWCRS
+004131  2  62 6F                    .byte $62,$6F
+004133  2  42           L4133:      .byte $42
+004134  2  48           L4134:      pha
+004135  2  20 74 E4                 jsr WARMSV
+004138  2  68                       pla
+004139  2               
+004139  2               ;
+004139  2               ; OUTPUT-Routine
+004139  2               ;
+004139  2               ;L4139:      clc
+004139  2               ;            bit BUFRFL					;jump over $38 (SEC)
+004139  2               ;L413C:      php
+004139  2               ;            nop
+004139  2               ;            nop
+004139  2               ;            nop
+004139  2               ;            nop
+004139  2               ;            nop
+004139  2               ;            nop
+004139  2               ;            nop
+004139  2               ;            plp
+004139  2               ;            ror A
+004139  2               ;            ror A
+004139  2               ;            ror A
+004139  2               ;            ror A
+004139  2               ;            ror A
+004139  2               ;            ldx #$00
+004139  2               ;            sei
+004139  2               ;            stx NMIEN
+004139  2               ;            sta WSYNC
+004139  2               ;            stx PORTA
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;            ror A
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;            ror A
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;            ror A
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;            ror A
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;            ror A
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;            ror A
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;            ror A
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;            ror A
+004139  2               ;            sta WSYNC
+004139  2               ;            sta PORTA
+004139  2               ;
+004139  2               ;            lda #$FF					;stop-bit
+004139  2               ;            sta WSYNC					;and enable interrupts
+004139  2               ;            sta PORTA
+004139  2               ;            sta NMIEN
+004139  2               ;            cli
+004139  2               ;
+004139  2               ;            ldx #$20					;wait some time
+004139  2               ;L41A2:      dex
+004139  2               ;            bpl L41A2
+004139  2               ;
+004139  2               ;L41A5:      lda PORTA					;burst, ack
+004139  2               ;            and #$20
+004139  2               ;            beq L41A5
+004139  2               ;            rts
+004139  2  18           L4139:      	clc
+00413A  2  24 38        		bit BUFRFL					;jump over $38 (SEC)
+00413C  2               L413C:
+00413C  2  78           OUT:		sei
+00413D  2  A2 00        		ldx	#0
+00413F  2  8E 0E D4     		stx	NMIEN
+004142  2  8E 00 D4     		stx	DMACLT
+004145  2  A0 3C        		LDY	#CA2HIGH			;CA2=1
+004147  2  20 7A 41     		JSR	SEND				;SEND START BIT (=0)
+00414A  2  A2 08        		LDX	#08				;SETUP BIT COUNT OF 9
+00414C  2  EA           		NOP
+00414D  2  EA           		NOP
+00414E  2  EA           		NOP					;2+2+2+2=8
+00414F  2  6A           OUT0:		ROR	A				;PUT BIT INTO CARRY
+004150  2  B0 09        		BCS	HI
+004152  2  90 00        		BCC	LO				;2+3=5 CYCLES TO LO
+004154  2  A0 3C        LO:		LDY	#CA2HIGH			;5+2 CYCLES TO JSR
+004156  2  20 7A 41     		JSR	SEND				;SEND A 0
+004159  2  90 07        		BCC	OUT1				;3 CYCLES
+00415B  2  A0 34        HI:		LDY	#CA2LOW				;3+4 CYCLES TO JSR
+00415D  2  20 7A 41     		JSR	SEND				;SEND A 1
+004160  2  B0 00        		BCS	OUT1				;3 CYCLES
+004162  2  CA           OUT1:		DEX					;NEXT BIT 2 CYC
+004163  2  10 EA        		BPL	OUT0				;MORE 3 OR 2 CYC
+004165  2  30 00        		BMI	OUT2				;SEND STOP BIT 3 CYC
+004167  2  A0 34        OUT2:		LDY	#CA2LOW				;SEND A 1
+004169  2  D0 00        		BNE	OUT3
+00416B  2  20 7A 41     OUT3:		JSR	SEND				;2+3+4+3=12
+00416E  2  58           		cli
+00416F  2  A2 FF        		ldx	#$ff
+004171  2  8E 0E D4     		stx	NMIEN
+004174  2  A2 22        		ldx	#$22
+004176  2  8E 00 D4     		stx	DMACLT
+004179  2  60           		RTS
+00417A  2               
+00417A  2  8C 02 D3     SEND:		STY	PACTL				;OUTPUT BIT
+00417D  2  A0 0C        		LDY	#12				;TIMER FOR 15.7KB
+00417F  2  88           S1:		DEY
+004180  2  D0 FD        		BNE	S1				;5*Y-1 CYCLES
+004182  2  F0 00        		BEQ	S2				;3
+004184  2  EA           S2:		NOP
+004185  2  EA           		NOP
+004186  2  EA           		NOP
+004187  2  EA           		NOP					;2+2+2+2=8
+004188  2  60           S3:		RTS					;6 CYCLES
+004189  2               
+004189  2  00 00 00 00  		.byte	0, 0, 0, 0, 0, 0, 0, 0
+00418D  2  00 00 00 00  
+004191  2  00 00 00 00  		.byte	0, 0, 0, 0, 0, 0, 0, 0
+004195  2  00 00 00 00  
+004199  2  00 00 00 00  		.byte	0, 0, 0, 0, 0, 0, 0, 0
+00419D  2  00 00 00 00  
+0041A1  2  00 00 00 00  		.byte	0, 0, 0, 0, 0, 0, 0, 0
+0041A5  2  00 00 00 00  
+0041A9  2  00 00 00 00  		.byte	0, 0, 0, 0
+0041AD  2               
+0041AD  2  C9 1B                    cmp #$1B
+0041AF  2  D0 06                    bne L41B7
+0041B1  2  A2 C0                    ldx #$C0
+0041B3  2  8E FF FF                 stx LFFFF
+0041B6  2  60                       rts
+0041B7  2  2C FF FF     L41B7:      bit LFFFF
+0041BA  2  50 1A                    bvc L41D6
+0041BC  2  85 1A                    sta DSKUTL
+0041BE  2  C9 48                    cmp #$48
+0041C0  2  F0 21                    beq L41E3
+0041C2  2  C9 4A                    cmp #$4A
+0041C4  2  F0 36                    beq L41FC
+0041C6  2  C9 4B                    cmp #$4B
+0041C8  2  F0 38                    beq L4202
+0041CA  2  C9 65                    cmp #$65
+0041CC  2  F0 18                    beq L41E6
+0041CE  2  C9 66                    cmp #$66
+0041D0  2  F0 17                    beq L41E9
+0041D2  2  C9 59                    cmp #$59
+0041D4  2  F0 3A                    beq L4210
+0041D6  2  4C FF FF     L41D6:      jmp LFFFF
+0041D9  2  00 80 FF                 .byte $00,$80,$FF
+0041DC  2  D9 FF D8                 cmp LD8FF,Y
+0041DF  2  FF 00 00 FF              .byte $FF,$00,$00,$FF
+0041E3  2  A0 00        L41E3:      ldy #$00
+0041E5  2  2C A0 03                 bit IOCB6
+0041E8  2  2C A0 05                 bit L05A0
+0041EB  2  B9 A5 00     L41EB:      lda L00A5,Y
+0041EE  2  C9 FF                    cmp #$FF
+0041F0  2  F0 06                    beq L41F8
+0041F2  2  20 07 00                 jsr CMCMD
+0041F5  2  C8                       iny
+0041F6  2  D0 F3                    bne L41EB
+0041F8  2  A5 1A        L41F8:      lda DSKUTL
+0041FA  2  D0 DA                    bne L41D6
+0041FC  2  A0 17        L41FC:      ldy #$17
+0041FE  2  A9 9C                    lda #$9C
+004200  2  D0 04                    bne L4206
+004202  2  A0 4F        L4202:      ldy #$4F
+004204  2  A9 FE                    lda #$FE
+004206  2  48           L4206:      pha
+004207  2  20 05 00                 jsr RAMLO+1
+00420A  2  68                       pla
+00420B  2  88                       dey
+00420C  2  10 F8                    bpl L4206
+00420E  2  30 E8                    bmi L41F8
+004210  2  20 6D B0     L4210:      jsr LB06D
+004213  2  B0 19                    bcs L422E
+004215  2  38                       sec
+004216  2  E9 20                    sbc #$20
+004218  2  29 1F                    and #$1F
+00421A  2  09 80                    ora #$80
+00421C  2  20 07 00                 jsr CMCMD
+00421F  2  20 6D B0                 jsr LB06D
+004222  2  B0 0A                    bcs L422E
+004224  2  29 7F                    and #$7F
+004226  2  38                       sec
+004227  2  E9 20                    sbc #$20
+004229  2  29 7F                    and #$7F
+00422B  2  20 07 00                 jsr CMCMD
+00422E  2  60           L422E:      rts
+00422F  2               
+00422F  2               L422F:      ;ldx #$FF					;PORTA all '1'
+00422F  2                           ;stx PORTA
+00422F  2                           ;lda #$38					;select DDR
+00422F  2                           ;sta PACTL
+00422F  2                           ;stx PORTA					;all output
+00422F  2                           ;lda #$3C					;select output reg.
+00422F  2                           ;sta PACTL
+00422F  2                           ;stx PORTA
+00422F  2               ;	    lda	#CA2LOW					;set stopbit
+00422F  2               ;	    sta	PACTL
+00422F  2               ;
+00422F  2               ;	    ldx	#12
+00422F  2               ;esxep80a:  stx WSYNC
+00422F  2               ;	    dex
+00422F  2               ;	    bne	resxep80a
+00422F  2               ;
+00422F  2               ;           sec						;set CMD mode
+00422F  2               ;           lda #$D7					;set PAL mode
+00422F  2               ;           jsr L413C
+00422F  2               ;           jmp L4001
+00422F  2               ;
+00422F  2               ;            *= $02E0
+00422F  2               ;
+00422F  2               ;            .word L422F
+00422F  2               
+00422F  2               ;		.word $02e0
+00422F  2               ;		.word $02e1
+00422F  2               ;		.word $4001
+00422F  2               
+00422F  1               ;
+00422F  1               
+00422F  1               

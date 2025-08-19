@@ -70,6 +70,7 @@ Current file: ..\src\h6100.a65
 000000r 2               	SDMCTL=$22F
 000000r 2               	KEYDEL=$2D9
 000000r 2               	KEYREP=$2DA
+000000r 2               	MEMTOP=$2E5
 000000r 2               	DVSTAT=$2EA
 000000r 2               	CRSINH=$2F0
 000000r 2               	CHBAS=$2F4
@@ -268,7 +269,7 @@ Current file: ..\src\h6100.a65
 006217  2  4C A3 64     		JMP	ENAB
 00621A  2  C9 19        COM3:		CMP	#$19				;CHECK 80/40
 00621C  2  D0 03        		BNE	COM4
-00621E  2  4C 42 63     		JMP	XIO19				;DO IT
+00621E  2  4C 65 63     		JMP	XIO19				;DO IT
 006221  2  60           COM4:		RTS
 006222  2               ;
 006222  2               ;PCOM:		LDA	ICCOMZ				;GET CMD
@@ -491,130 +492,157 @@ Current file: ..\src\h6100.a65
 0062AD  2               ;
 0062AD  2  A5 22        FORCOM:		LDA	ICCOMZ
 0062AF  2  C9 18        		CMP	#$18				;Fill Command
-0062B1  2  F0 41        		BEQ	XIO18
+0062B1  2  F0 6B        		BEQ	XIO18
 0062B3  2  60           		RTS
 0062B4  2               ;
-0062B4  2               CINIT:		;LDA	#00
-0062B4  2               		;STA	TOGGLE
-0062B4  2               ;		JSR	JINIT				;INIT Joy-Port
-0062B4  2               ;		JSR	resxep80
-0062B4  2               ;		BCC	CINIT1				;GOT IT
-0062B4  2               ;noxep80a:	stx	$d01a
-0062B4  2               ;		inx
-0062B4  2               ;		JMP	noxep80a
-0062B4  2               
-0062B4  2               CINIT1:
-0062B4  2               ;		LDA	#$50
-0062B4  2               ;		LDY	#02 				;Printer
-0062B4  2               ;		JSR	FSET
-0062B4  2  A9 08        		lda	#8
-0062B6  2  8D C0 02     		STA	$2C0
+0062B4  2  20 96 63     CINIT:		jsr	resxep80
+0062B7  2  90 1A        		bcc	CINIT1
 0062B9  2               
-0062B9  2  A9 53        		LDA	#$53				;S:-Handler
-0062BB  2  20 7D 65     		JSR	FIND
-0062BE  2  BD 1B 03     		LDA	HATABS+1,X
-0062C1  2  8D BA 64     		STA	TEMPSV
-0062C4  2  BD 1C 03     		LDA	HATABS+2,X
-0062C7  2  8D BB 64     		STA	TEMPSV+1
-0062CA  2  A9 45        		LDA	#$45				;E-Handler
-0062CC  2  20 7D 65     		JSR	FIND
-0062CF  2  BD 1B 03     		LDA	HATABS+1,X
-0062D2  2  85 CC        		STA	IN				;ZP-pointer
-0062D4  2  BD 1C 03     		LDA	HATABS+2,X
-0062D7  2  85 CD        		STA	IN+1
-0062D9  2  A0 0F        		LDY	#15
-0062DB  2  B1 CC        C003:		LDA	(IN),Y
-0062DD  2  99 D2 63     		STA	TMTAB,Y				;copy E-Handler entries to TMTAB
-0062E0  2  88           		DEY
-0062E1  2  10 F8        		BPL	C003
-0062E3  2  A9 AC        		LDA	#<(FORCOM-1)	;&$FF
-0062E5  2  8D DC 63     		STA	TMTAB+10
-0062E8  2  A9 62        		LDA	#>(FORCOM-1)	;/256
-0062EA  2  8D DD 63     		STA	TMTAB+11
-0062ED  2  AD 0F D2     		LDA	SKSTAT				;shift pressed?
-0062F0  2  29 08        		AND	#08
-0062F2  2  F0 70        		BEQ	C004				;yes, jump
-0062F4  2  A9 45        XIO18:		LDA	#$45				;E:
-0062F6  2  A0 00        		LDY	#00
-0062F8  2  20 89 65     		JSR	FSET
-0062FB  2  A9 53        		LDA	#$53				;S:
-0062FD  2  A0 01        		LDY	#01
-0062FF  2  20 89 65     		JSR	FSET
-006302  2  A9 21        		LDA	#<(WRITE-1)	;&$FF		;ICPUT (write-routine)
-006304  2  8D 46 03     		STA	$346
-006307  2  A9 62        		LDA	#>(WRITE-1)	;/256
-006309  2  8D 47 03     		STA	$347
-00630C  2  A2 00        EOPEN:		LDX	#00
-00630E  2  20 56 65     		JSR	FESUB
-006311  2  A5 2A        		LDA	ICAX1Z				;GET AUX 1
-006313  2  29 20        		AND	#32				;CHECK CLEAR BIT
-006315  2  D0 57        		BNE	C005				;DONT DO RESET
-006317  2  A9 00        		LDA	#00
-006319  2  A2 06        		LDX	#06
-00631B  2  9D AC 64     C0035:		STA	VCS,X				;clear VCS
-00631E  2  CA           		DEX
-00631F  2  10 FA        		BPL	C0035
-006321  2  A9 E0        		LDA	#$E0				;normal charset
-006323  2  8D B3 64     		STA	CHSH
-006326  2  A9 4F        		LDA	#$4F				;79 right margin
-006328  2  8D B4 64     		STA	RMARGS
-00632B  2  8D B5 64     		STA	COMPOS
-00632E  2               
-00632E  2  20 9B 63     		JSR	resxep80
-006331  2  B0 40        		BCS	noxep80				;GOT IT
-006333  2               
-006333  2               ;		JSR	JTOGL				;SWITCH PORTS
-006333  2               ;		BNE	IO00				;DO IT AGAIN
-006333  2  AD 14 D0     IO01:		LDA	PAL				;CHECK COMPUTER TYPE
-006336  2  29 0E        		AND	#$0E
-006338  2  D0 05        		BNE	IOP1
-00633A  2  A9 D7        		LDA	#PAL80
-00633C  2  20 A4 61     		JSR	CMD				;SET 80 COL TO 50HZ
-00633F  2  4C A3 64     IOP1:		JMP	ENAB
-006342  2               ;
-006342  2  A2 06        XIO19:		LDX	#06          			;revert
-006344  2  20 56 65     		JSR	FESUB
-006347  2  A9 53        		LDA	#$53  				;'S:' Handler
-006349  2  20 7D 65     		JSR	FIND
-00634C  2  AD BA 64     		LDA	TEMPSV
-00634F  2  9D 1B 03     		STA	HATABS+1,X
-006352  2  AD BB 64     		LDA	TEMPSV+1
-006355  2  9D 1C 03     		STA	HATABS+2,X
-006358  2  AD D8 63     		LDA	TMTAB+6
-00635B  2  8D 46 03     		STA	$346
-00635E  2  AD D9 63     		LDA	TMTAB+7
-006361  2  8D 47 03     		STA	$347
-006364  2  A9 45        C004:		LDA	#$45
-006366  2  A0 03        		LDY	#03
-006368  2  20 89 65     		JSR	FSET
-00636B  2  4C A9 64     		JMP	EXIT
-00636E  2  A9 D2        C005:		LDA	#SCR80				;IN CASE A PRINT
-006370  2  4C E9 61     		JMP	COMSD				;HAS OCCURED
-006373  2               
-006373  2               
-006373  2  A9 53        noxep80:	LDA	#$53				;S:-Handler
-006375  2  20 7D 65     		JSR	FIND
-006378  2  AD BA 64     		LDA	TEMPSV
-00637B  2  9D 1B 03     		STA	HATABS+1,X
-00637E  2  AD BB 64     		LDA	TEMPSV+1
-006381  2  9D 1C 03     		STA	HATABS+2,X
-006384  2               
-006384  2  A9 45        		LDA	#$45				;E-Handler
-006386  2  20 7D 65     		JSR	FIND
-006389  2  A5 CC        		LDA	IN				;ZP-pointer
-00638B  2  9D 1B 03     		STA	HATABS+1,X
-00638E  2  A5 CD        		LDA	IN+1
-006390  2  9D 1C 03     		STA	HATABS+2,X
-006393  2               
-006393  2  A2 06        		ldx	#6				;no XEP80
-006395  2  20 56 65     		JSR	FESUB
-006398  2               
-006398  2  4C A3 64     		jmp	ENAB
-00639B  2               
-00639B  2  A2 34        resxep80:	LDX	#CA2LOW				;CA2 = low, (RS232 idle)
+0062B9  2  A2 3C        		ldx	#CA2HIGH
+0062BB  2  8E 02 D3     		stx	PACTL
+0062BE  2  A2 06        		ldx	#6				;no XEP80
+0062C0  2  20 56 65     		jsr	FESUB
+0062C3  2  20 A3 64     		jsr	ENAB
+0062C6  2               
+0062C6  2  AD 01 61     		lda	BEGIN+1
+0062C9  2  85 0C        		sta	DOSINI
+0062CB  2  AD 02 61     		lda	BEGIN+2
+0062CE  2  85 0D        		sta	DOSINI+1
+0062D0  2  A0 00        		ldy	#0
+0062D2  2  60           		rts
+0062D3  2               
+0062D3  2               CINIT1:
+0062D3  2  A6 0D        		ldx	DOSINI+1
+0062D5  2  CA           		dex
+0062D6  2  8E E6 02     		stx	MEMTOP+1
+0062D9  2  A2 FF        		ldx	#$ff
+0062DB  2  8E E5 02     		stx	MEMTOP
+0062DE  2               
+0062DE  2               		;LDA	#00
+0062DE  2               		;STA	TOGGLE
+0062DE  2               ;		JSR	JINIT				;INIT Joy-Port
+0062DE  2               ;		JSR	resxep80
+0062DE  2               ;		BCC	CINIT1				;GOT IT
+0062DE  2               ;noxep80a:	stx	$d01a
+0062DE  2               ;		inx
+0062DE  2               ;		JMP	noxep80a
+0062DE  2               
+0062DE  2               
+0062DE  2               ;		LDA	#$50
+0062DE  2               ;		LDY	#02 				;Printer
+0062DE  2               ;		JSR	FSET
+0062DE  2  A9 08        		lda	#8
+0062E0  2  8D C0 02     		STA	$2C0
+0062E3  2               
+0062E3  2               
+0062E3  2  A9 53        		LDA	#$53				;S:-Handler
+0062E5  2  20 7D 65     		JSR	FIND
+0062E8  2  BD 1B 03     		LDA	HATABS+1,X
+0062EB  2  8D BA 64     		STA	TEMPSV
+0062EE  2  BD 1C 03     		LDA	HATABS+2,X
+0062F1  2  8D BB 64     		STA	TEMPSV+1
+0062F4  2  A9 45        		LDA	#$45				;E-Handler
+0062F6  2  20 7D 65     		JSR	FIND
+0062F9  2  BD 1B 03     		LDA	HATABS+1,X
+0062FC  2  85 CC        		STA	IN				;ZP-pointer
+0062FE  2  BD 1C 03     		LDA	HATABS+2,X
+006301  2  85 CD        		STA	IN+1
+006303  2  A0 0F        		LDY	#15
+006305  2  B1 CC        C003:		LDA	(IN),Y
+006307  2  99 D2 63     		STA	TMTAB,Y				;copy E-Handler entries to TMTAB
+00630A  2  88           		DEY
+00630B  2  10 F8        		BPL	C003
+00630D  2  A9 AC        		LDA	#<(FORCOM-1)	;&$FF
+00630F  2  8D DC 63     		STA	TMTAB+10
+006312  2  A9 62        		LDA	#>(FORCOM-1)	;/256
+006314  2  8D DD 63     		STA	TMTAB+11
+006317  2  AD 0F D2     		LDA	SKSTAT				;shift pressed?
+00631A  2  29 08        		AND	#08
+00631C  2  F0 69        		BEQ	C004				;yes, jump
+00631E  2  A9 45        XIO18:		LDA	#$45				;E:
+006320  2  A0 00        		LDY	#00
+006322  2  20 89 65     		JSR	FSET
+006325  2  A9 53        		LDA	#$53				;S:
+006327  2  A0 01        		LDY	#01
+006329  2  20 89 65     		JSR	FSET
+00632C  2  A9 21        		LDA	#<(WRITE-1)	;&$FF		;ICPUT (write-routine)
+00632E  2  8D 46 03     		STA	$346
+006331  2  A9 62        		LDA	#>(WRITE-1)	;/256
+006333  2  8D 47 03     		STA	$347
+006336  2               EOPEN:		;LDX	#00
+006336  2               		;JSR	FESUB
+006336  2  A5 2A        		LDA	ICAX1Z				;GET AUX 1
+006338  2  29 20        		AND	#32				;CHECK CLEAR BIT
+00633A  2  D0 55        		BNE	C005				;DONT DO RESET
+00633C  2  A9 00        		LDA	#00
+00633E  2  A2 06        		LDX	#06
+006340  2  9D AC 64     C0035:		STA	VCS,X				;clear VCS
+006343  2  CA           		DEX
+006344  2  10 FA        		BPL	C0035
+006346  2  A9 E0        		LDA	#$E0				;normal charset
+006348  2  8D B3 64     		STA	CHSH
+00634B  2  A9 4F        		LDA	#$4F				;79 right margin
+00634D  2  8D B4 64     		STA	RMARGS
+006350  2  8D B5 64     		STA	COMPOS
+006353  2               
+006353  2  20 96 63     		JSR	resxep80
+006356  2               ;		BCS	noxep80				;GOT IT
+006356  2               
+006356  2               ;		JSR	JTOGL				;SWITCH PORTS
+006356  2               ;		BNE	IO00				;DO IT AGAIN
+006356  2  AD 14 D0     IO01:		LDA	PAL				;CHECK COMPUTER TYPE
+006359  2  29 0E        		AND	#$0E
+00635B  2  D0 05        		BNE	IOP1
+00635D  2  A9 D7        		LDA	#PAL80
+00635F  2  20 A4 61     		JSR	CMD				;SET 80 COL TO 50HZ
+006362  2  4C A3 64     IOP1:		JMP	ENAB
+006365  2               ;
+006365  2  A2 06        XIO19:		LDX	#06          			;revert
+006367  2  20 56 65     		JSR	FESUB
+00636A  2  A9 53        		LDA	#$53  				;'S:' Handler
+00636C  2  20 7D 65     		JSR	FIND
+00636F  2  AD BA 64     		LDA	TEMPSV
+006372  2  9D 1B 03     		STA	HATABS+1,X
+006375  2  AD BB 64     		LDA	TEMPSV+1
+006378  2  9D 1C 03     		STA	HATABS+2,X
+00637B  2  AD D8 63     		LDA	TMTAB+6
+00637E  2  8D 46 03     		STA	$346
+006381  2  AD D9 63     		LDA	TMTAB+7
+006384  2  8D 47 03     		STA	$347
+006387  2  A9 45        C004:		LDA	#$45
+006389  2  A0 03        		LDY	#03
+00638B  2  20 89 65     		JSR	FSET
+00638E  2  4C A9 64     		JMP	EXIT
+006391  2  A9 D2        C005:		LDA	#SCR80				;IN CASE A PRINT
+006393  2  4C E9 61     		JMP	COMSD				;HAS OCCURED
+006396  2               
+006396  2               
+006396  2               ;noxep80:
+006396  2               ;		LDA	#$53				;S:-Handler
+006396  2               ;		JSR	FIND
+006396  2               ;		LDA	TEMPSV
+006396  2               ;		STA	HATABS+1,X
+006396  2               ;		LDA	TEMPSV+1
+006396  2               ;		STA	HATABS+2,X
+006396  2               ;
+006396  2               ;		LDA	#$45				;E-Handler
+006396  2               ;		JSR	FIND
+006396  2               ;		LDA	IN				;ZP-pointer
+006396  2               ;		STA	HATABS+1,X
+006396  2               ;		LDA	IN+1
+006396  2               ;		STA	HATABS+2,X
+006396  2               ;
+006396  2               ;		ldx	#6				;no XEP80
+006396  2               ;		JSR	FESUB
+006396  2               ;
+006396  2               ;		jmp	ENAB
+006396  2               
+006396  2  A2 00        resxep80:	ldx	#0
+006398  2  20 56 65     		jsr	FESUB
+00639B  2  A2 34        		LDX	#CA2LOW				;CA2 = low, (RS232 idle)
 00639D  2  8E 02 D3     		STX	PACTL
 0063A0  2               
-0063A0  2  A0 0A        		ldy	#10
+0063A0  2  A0 0A        		ldy	#10				;wait some time
 0063A2  2  A2 00        		LDX	#00
 0063A4  2  CA           resxep80a:	dex
 0063A5  2  D0 FD        		bne	resxep80a
@@ -625,7 +653,7 @@ Current file: ..\src\h6100.a65
 0063AD  2  A9 C2        		LDA	#RST80				;RESET 80 COL
 0063AF  2  4C 1B 61     		jmp	CINP				;REQUEST, GET CHAR
 0063B2  2               ;
-0063B2  2  0B 63        EDTAB:		.WORD EOPEN-1				;OPEN
+0063B2  2  35 63        EDTAB:		.WORD EOPEN-1				;OPEN
 0063B4  2  A8 64        		.WORD EXIT-1				;CLOSE
 0063B6  2  2E 64        		.WORD EGET-1				;GET LINE OF TEXT
 0063B8  2  21 62        		.WORD WRITE-1				;PUT (NO CURS)
@@ -778,7 +806,7 @@ Current file: ..\src\h6100.a65
 0064BA  2  00 00        TEMPSV:		.WORD 0
 0064BC  2               ;
 0064BC  2               ;INMST:		.BYTE 02,$20
-0064BC  2               ;OUTMT:		.BYTE 01,$10
+0064BC  2               ;	OUTMT:		.BYTE 01,$10
 0064BC  2               ;
 0064BC  2  00 00 00 4F  FETAB:		.BYTE 0,0,0,$4F,24,3
 0064C0  2  18 03        
