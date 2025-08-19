@@ -326,34 +326,14 @@ next:		sta	bitbuf+1,x
 		sei
 		ldx	#0
 		stx	NMIEN
-		stx	DMACLT
-		LDY	#CA2HIGH			;CA2=1
-;		JSR	SEND				;SEND START BIT (=0)
-		LDX	#08				;SETUP BIT COUNT OF 9
-		NOP	                                
-		NOP	                                
-		NOP					;2+2+2+2=8
-OUT0:		ROR	A				;PUT BIT INTO CARRY
-		BCS	HI                              
-		BCC	LO				;2+3=5 CYCLES TO LO
-LO:		LDY	#CA2HIGH			;5+2 CYCLES TO JSR
-;		JSR	SEND				;SEND A 0
-		BCC	OUT1				;3 CYCLES
-HI:		LDY	#CA2LOW				;3+4 CYCLES TO JSR
-;		JSR	SEND				;SEND A 1
-		BCS	OUT1				;3 CYCLES
-OUT1:		DEX					;NEXT BIT 2 CYC
-		BPL	OUT0				;MORE 3 OR 2 CYC
-		BMI	OUT2				;SEND STOP BIT 3 CYC
-OUT2:		LDY	#CA2LOW				;SEND A 1
-		BNE	OUT3                            
-OUT3:;		JSR	SEND				;2+3+4+3=12
+
+		lda	bitbuf, x
+		sta	WSYNC
+		 
 		cli
 		ldx	#$ff
 		stx	NMIEN
-		ldx	#$22
-		stx	DMACLT
-		RTS	                                
+		rts
 							
 
 bitbuf:		.byte	CA2HIGH, 0, 0, 0, 0, 0, 0, 0
