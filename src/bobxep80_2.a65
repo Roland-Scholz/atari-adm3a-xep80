@@ -84,43 +84,35 @@ LFFFF       = $FFFF
 ;
 L4000:      rts
 L4001:      lda LB000					;quit if $B000 <> $54
-            cmp #$54
-            bne L4000
+			cmp #$54
+	bne L4000
 
-	    ldx	#CA2LOW					;set stopbit
-	    stx	PACTL
+			ldx	#CA2LOW					;set stopbit
+			stx	PACTL
+	  	    	      
+;			ldx #$FF					;PORTA all '1'
+;			stx PORT			
+;			lda PACTL					;0b11111011
+;			and #$FB					;set DDR=0 (Data direction register)
+;			sta PACTL					;reset Bit2			
+;			stx PORTA					;all output
+;			ora #$04
+;			sta PACTL					;select output register
+;			stx PORTA					;PORTA all '1'
 	    
-resxep80a:  stx WSYNC
-	    dex
-	    bne	resxep80a
-
-	    lda	PAL
-	    and $0e
-	    BNE	NTSC 
-  	    
-            lda #$D7					;set PAL mode
-            jsr L413B					;CMD
-	    	    
-	    nop
-	    
-;            ldx #$FF					;PORTA all '1'
-;            stx PORTA
-	    
-;            lda PACTL					;0b11111011
-;            and #$FB					;set DDR=0 (Data direction register)
-;            sta PACTL					;reset Bit2 
-	    
-;            stx PORTA					;all output
-;            ora #$04
-;            sta PACTL					;select output register
-;            stx PORTA					;PORTA all '1'
-	    
-NTSC:       lda RTCLOK+2				;wait 1-2 jiffys
+			lda RTCLOK+2				;wait 1-2 jiffys
             adc #$02
 L4024:      cmp RTCLOK+2
             bne L4024
-	    
-            lda LB02E
+			
+			lda	PAL
+			and $0e
+			bne	NTSC 
+  	    
+            lda #$D7					;set PAL mode
+            jsr L413B					;CMD
+
+NTSC:       lda LB02E
             sta DSKUTL
             lda LB02F
             sta DSKUTL+1
@@ -247,76 +239,76 @@ L4134:      pha
 ;
 ; OUTPUT-Routine
 ;
-;L4139:      clc
-;            bit BUFRFL					;jump over $38 (SEC)
-;L413C:      php
-;            nop
-;            nop
-;            nop
-;            nop
-;            nop
-;            nop
-;            nop
-;            plp
-;            ror A
-;            ror A
-;            ror A
-;            ror A
-;            ror A
-;            ldx #$00
-;            sei
-;            stx NMIEN
-;            sta WSYNC
-;            stx PORTA
-;            sta WSYNC
-;            sta PORTA
-;            ror A
-;            sta WSYNC
-;            sta PORTA
-;            ror A
-;            sta WSYNC
-;            sta PORTA
-;            ror A
-;            sta WSYNC
-;            sta PORTA
-;            ror A
-;            sta WSYNC
-;            sta PORTA
-;            ror A
-;            sta WSYNC
-;            sta PORTA
-;            ror A
-;            sta WSYNC
-;            sta PORTA
-;            ror A
-;            sta WSYNC
-;            sta PORTA
-;            ror A
-;            sta WSYNC
-;            sta PORTA
-;	    
-;            lda #$FF					;stop-bit
-;            sta WSYNC					;and enable interrupts
-;            sta PORTA
-;            sta NMIEN
-;            cli
-;	    
-;            ldx #$20					;wait some time
-;L41A2:      dex
-;            bpl L41A2
-;	    
-;L41A5:      lda PORTA					;burst, ack
-;            and #$20
-;            beq L41A5
-;            rts
-L4139:      	clc
-		bit BUFRFL					;jump over $38 (SEC)
+;L4139:		clc
+;      		bit BUFRFL					;jump over $38 (SEC)
+;L413C:		php
+;      		nop
+;      		nop
+;      		nop
+;      		nop
+;      		nop
+;      		nop
+;      		nop
+;      		plp
+;      		ror A
+;      		ror A
+;      		ror A
+;      		ror A
+;      		ror A
+;      		ldx #$00
+;      		sei
+;      		stx NMIEN
+;      		sta WSYNC
+;      		stx PORTA
+;      		sta WSYNC
+;      		sta PORTA
+;      		ror A
+;      		sta WSYNC
+;      		sta PORTA
+;      		ror A
+;      		sta WSYNC
+;      		sta PORTA
+;      		ror A
+;      		sta WSYNC
+;      		sta PORTA
+;      		ror A
+;      		sta WSYNC
+;      		sta PORTA
+;      		ror A
+;      		sta WSYNC
+;      		sta PORTA
+;      		ror A
+;      		sta WSYNC
+;      		sta PORTA
+;      		ror A
+;      		sta WSYNC
+;      		sta PORTA
+;      		ror A
+;      		sta WSYNC
+;      		sta PORTA
+;	   		
+;      		lda #$FF					;stop-bit
+;      		sta WSYNC					;and enable interrupts
+;      		sta PORTA
+;      		sta NMIEN
+;      		cli
+;	   		
+;      		ldx #$20					;wait some time
+;L41A2:		dex
+;      		bpl L41A2
+;	   		
+;L41A5:		lda PORTA					;burst, ack
+;      		and #$20
+;      		beq L41A5
+;      		rts
+L4139:		clc
+			bit BUFRFL					;jump over $38 (SEC)
 L413C:
 OUT:		ldx	#8
 outcomp:	pha
-		lda	#CA2LOW
-		bcs	next
-		lda	#CA2HIGH
+			lda	#CA2LOW
+			bcs	next
+			lda	#CA2HIGH				
 next:		sta	bitbuf+1,x
 		pla
 		rol
@@ -429,7 +421,3 @@ L422F:      ;ldx #$FF					;PORTA all '1'
 ;            *= $02E0
 ;
 ;            .word L422F
-
-;		.word $02e0
-;		.word $02e1
-;		.word $4001
