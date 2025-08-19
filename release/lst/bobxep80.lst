@@ -595,290 +595,295 @@ Current file: ..\src\bobxep80.a65
 000000r 2               ;
 000000r 2               ; Start of code
 000000r 2               ;
-000000r 2                           .org $4000
+000000r 2               		.org $4000
 004000  2               ;
-004000  2  60           L4000:      rts
-004001  2  AD 00 B0     L4001:      lda LB000					;quit if $B000 <> $54
-004004  2  C9 54                    cmp #$54
-004006  2  D0 F8                    bne L4000
+004000  2  60           L4000:		rts
+004001  2  AD 00 B0     L4001:		lda	LB000				;quit if $B000 <> $54
+004004  2  C9 54        		cmp	#$54
+004006  2  D0 F8        		bne	L4000
 004008  2               
-004008  2  A2 34        	    ldx	#CA2LOW					;set stopbit
-00400A  2  8E 02 D3     	    stx	PACTL
+004008  2  A2 34        		ldx	#CA2LOW				;set stopbit
+00400A  2  8E 02 D3     		stx	PACTL
 00400D  2               
-00400D  2  8E 0A D4     resxep80a:  stx WSYNC
-004010  2  CA           	    dex
-004011  2  D0 FA        	    bne	resxep80a
-004013  2               
-004013  2  AD 14 D0     	    lda	PAL
-004016  2  25 0E        	    and $0e
-004018  2  D0 06        	    BNE	NTSC
-00401A  2               
-00401A  2  A9 D7                    lda #$D7					;set PAL mode
-00401C  2  20 3B 41                 jsr L413B					;CMD
-00401F  2               
-00401F  2  EA           	    nop
-004020  2               
-004020  2               ;            ldx #$FF					;PORTA all '1'
-004020  2               ;            stx PORTA
-004020  2               
-004020  2               ;            lda PACTL					;0b11111011
-004020  2               ;            and #$FB					;set DDR=0 (Data direction register)
-004020  2               ;            sta PACTL					;reset Bit2
-004020  2               
-004020  2               ;            stx PORTA					;all output
-004020  2               ;            ora #$04
-004020  2               ;            sta PACTL					;select output register
-004020  2               ;            stx PORTA					;PORTA all '1'
-004020  2               
-004020  2  A5 14        NTSC:       lda RTCLOK+2				;wait 1-2 jiffys
-004022  2  69 02                    adc #$02
-004024  2  C5 14        L4024:      cmp RTCLOK+2
-004026  2  D0 FC                    bne L4024
+00400D  2               ;		ldx #$FF				;PORTA all '1'
+00400D  2               ;		stx PORT
+00400D  2               ;		lda PACTL				;0b11111011
+00400D  2               ;		and #$FB				;set DDR=0 (Data direction register)
+00400D  2               ;		sta PACTL				;reset Bit2
+00400D  2               ;		stx PORTA				;all output
+00400D  2               ;		ora #$04
+00400D  2               ;		sta PACTL				;select output register
+00400D  2               ;		stx PORTA				;PORTA all '1'
+00400D  2               
+00400D  2  A5 14        		lda	RTCLOK+2			;wait 1-2 jiffys
+00400F  2  69 02        		adc	#$02
+004011  2  C5 14        L4024:		cmp	RTCLOK+2
+004013  2  D0 FC        		bne	L4024
+004015  2               
+004015  2  AD 14 D0     		lda	PAL
+004018  2  29 0E        		and	#$0e
+00401A  2  D0 0C        		bne	NTSC
+00401C  2               
+00401C  2  A9 D7        		lda	#$D7				;set PAL mode
+00401E  2  20 3B 41     		jsr	L413B				;CMD
+004021  2               
+004021  2  EA           		nop
+004022  2  EA           		nop
+004023  2  EA           		nop
+004024  2  EA           		nop
+004025  2  EA           		nop
+004026  2  EA           		nop
+004027  2  EA           		nop
 004028  2               
-004028  2  AD 2E B0                 lda LB02E
-00402B  2  85 1A                    sta DSKUTL
-00402D  2  AD 2F B0                 lda LB02F
-004030  2  85 1B                    sta DSKUTL+1
-004032  2  A0 00                    ldy #$00
-004034  2  B1 1A                    lda (DSKUTL),Y
-004036  2  38                       sec
-004037  2  E9 01                    sbc #$01
-004039  2  91 1A                    sta (DSKUTL),Y
-00403B  2  85 AE                    sta L00AE
-00403D  2  48                       pha
-00403E  2  A8                       tay
-00403F  2  A2 00                    ldx #$00
-004041  2  86 AB                    stx L00AB
-004043  2  86 AD                    stx L00AD
-004045  2  86 88                    stx L0088
-004047  2  86 AC                    stx L00AC
-004049  2  20 32 B0                 jsr LB032
-00404C  2  A5 9D                    lda L009D
-00404E  2  85 89                    sta L0089
-004050  2  68                       pla
-004051  2  18                       clc
-004052  2  65 9D                    adc L009D
-004054  2  8D B6 40                 sta L40B6
-004057  2  8D F4 41                 sta L41F4
-00405A  2  8D 09 42                 sta L4209
-00405D  2  8D 1E 42                 sta L421E
-004060  2  8D 2D 42                 sta L422D
-004063  2  8D ED 41                 sta L41ED
-004066  2  8D 7E 40                 sta L407E
-004069  2  8D AB 40                 sta L40AB
-00406C  2  AD 18 B0                 lda LB018
-00406F  2  8D 36 41                 sta L4136
-004072  2  AD 19 B0                 lda LB019
-004075  2  8D 37 41                 sta L4137
-004078  2  A9 00                    lda #$00
-00407A  2  8D 18 B0                 sta LB018
-00407D  2  A9 50                    lda #$50
-00407F  2  8D 19 B0                 sta LB019
-004082  2  AD 21 B0                 lda LB021
-004085  2  8D D7 41                 sta L41D7
-004088  2  AD 22 B0                 lda LB022
-00408B  2  8D D8 41                 sta L41D8
-00408E  2  AD 2E B0                 lda LB02E
-004091  2  18                       clc
-004092  2  69 6A                    adc #$6A
-004094  2  8D B4 41                 sta L41B4
-004097  2  8D B8 41                 sta L41B8
-00409A  2  AD 2F B0                 lda LB02F
-00409D  2  69 02                    adc #$02
-00409F  2  8D B5 41                 sta L41B5
-0040A2  2  8D B9 41                 sta L41B9
-0040A5  2  A9 79                    lda #$79
-0040A7  2  8D 21 B0                 sta LB021
-0040AA  2  A9 50                    lda #$50
-0040AC  2  8D 22 B0                 sta LB022
-0040AF  2  A0 FB                    ldy #$FB
-0040B1  2  B9 34 41     L40B1:      lda L4134,Y
-0040B4  2  99 00 FF                 sta LFF00,Y
-0040B7  2  88                       dey
-0040B8  2  C0 FF                    cpy #$FF
-0040BA  2  D0 F5                    bne L40B1
-0040BC  2  A0 00                    ldy #$00
-0040BE  2  B9 E0 40     L40BE:      lda L40E0,Y
-0040C1  2  38                       sec
-0040C2  2  20 3B 41                 jsr L413B
-0040C5  2  C8                       iny
-0040C6  2  C0 0D                    cpy #$0D
-0040C8  2  90 F4                    bcc L40BE
-0040CA  2  A5 14                    lda RTCLOK+2
-0040CC  2  69 07                    adc #$07
-0040CE  2  C5 14        L40CE:      cmp RTCLOK+2
-0040D0  2  D0 FC                    bne L40CE
-0040D2  2  A0 46                    ldy #$46
-0040D4  2  B9 ED 40     L40D4:      lda L40ED,Y
-0040D7  2  20 39 41                 jsr L4139
-0040DA  2  88                       dey
-0040DB  2  10 F7                    bpl L40D4
-0040DD  2  A0 01                    ldy #$01
-0040DF  2  60                       rts
-0040E0  2  D9 D4 DE     L40E0:      cmp LDED4,Y
-0040E3  2  D3                       .byte $D3
-0040E4  2  60                       rts
-0040E5  2  70 AF                    bvs L4096
-0040E7  2  B4 00                    ldy $00,X
-0040E9  2  80                       .byte $80
-0040EA  2  D0 C5                    bne L40B1
-0040EC  2  DC                       .byte $DC
-0040ED  2  9B           L40ED:      .byte $9B
-0040EE  2  66 66                    ror MLTTMP
-0040F0  2  75 50                    adc TEMP,X
-0040F2  2  20 74 72                 jsr L7274
-0040F5  2  65 62                    adc PALNTS
-0040F7  2  6F 52                    .byte $6F,$52
-0040F9  2  20 79 42                 jsr L4279
-0040FC  2  20 20 30                 jsr L3020
-0040FF  2  39 2F 37                 and L372F,Y
-004102  2  30 2F                    bmi L4133
-004104  2  35 30                    and STATUS,X
-004106  2  20 20 2E                 jsr L2E20
-004109  2  64                       .byte $64
-00410A  2  65 6C                    adc BUFSTR
-00410C  2  6C 61 74                 jmp (L7461)
-00410F  2  73                       .byte $73
-004110  2  6E 49 20                 ror L2049
-004113  2  32                       .byte $32
-004114  2  2E 31 20                 rol L2031
-004117  2  6E 6F 69                 ror L696F
-00411A  2  73 72                    .byte $73,$72
-00411C  2  65 76                    adc DELTAR
-00411E  2  20 72 65                 jsr L6572
-004121  2  76 69                    ror SAVADR+1,X
-004123  2  72 44                    .byte $72,$44
-004125  2  20 30 38                 jsr L3830
-004128  2  2D 50 45                 and L4550
-00412B  2  58                       cli
-00412C  2  20 6D 72                 jsr L726D
-00412F  2  65 54                    adc ROWCRS
-004131  2  62 6F                    .byte $62,$6F
-004133  2  42           L4133:      .byte $42
-004134  2  48           L4134:      pha
-004135  2  20 74 E4                 jsr WARMSV
-004138  2  68                       pla
+004028  2  AD 2E B0     NTSC:		lda	LB02E
+00402B  2  85 1A        		sta	DSKUTL
+00402D  2  AD 2F B0     		lda	LB02F
+004030  2  85 1B        		sta	DSKUTL+1
+004032  2  A0 00        		ldy	#$00
+004034  2  B1 1A        		lda	(DSKUTL),Y
+004036  2  38           		sec
+004037  2  E9 01        		sbc	#$01
+004039  2  91 1A        		sta	(DSKUTL),Y
+00403B  2  85 AE        		sta	L00AE
+00403D  2  48           		pha
+00403E  2  A8           		tay
+00403F  2  A2 00        		ldx	#$00
+004041  2  86 AB        		stx	L00AB
+004043  2  86 AD        		stx	L00AD
+004045  2  86 88        		stx	L0088
+004047  2  86 AC        		stx	L00AC
+004049  2  20 32 B0     		jsr	LB032
+00404C  2  A5 9D        		lda	L009D
+00404E  2  85 89        		sta	L0089
+004050  2  68           		pla
+004051  2  18           		clc
+004052  2  65 9D        		adc	L009D
+004054  2  8D B6 40     		sta	L40B6
+004057  2  8D F4 41     		sta	L41F4
+00405A  2  8D 09 42     		sta	L4209
+00405D  2  8D 1E 42     		sta	L421E
+004060  2  8D 2D 42     		sta	L422D
+004063  2  8D ED 41     		sta	L41ED
+004066  2  8D 7E 40     		sta	L407E
+004069  2  8D AB 40     		sta	L40AB
+00406C  2  AD 18 B0     		lda	LB018
+00406F  2  8D 36 41     		sta	L4136
+004072  2  AD 19 B0     		lda	LB019
+004075  2  8D 37 41     		sta	L4137
+004078  2  A9 00        		lda	#$00
+00407A  2  8D 18 B0     		sta	LB018
+00407D  2  A9 50        		lda	#$50
+00407F  2  8D 19 B0     		sta	LB019
+004082  2  AD 21 B0     		lda	LB021
+004085  2  8D D7 41     		sta	L41D7
+004088  2  AD 22 B0     		lda	LB022
+00408B  2  8D D8 41     		sta	L41D8
+00408E  2  AD 2E B0     		lda	LB02E
+004091  2  18           		clc
+004092  2  69 6A        		adc	#$6A
+004094  2  8D B4 41     		sta	L41B4
+004097  2  8D B8 41     		sta	L41B8
+00409A  2  AD 2F B0     		lda	LB02F
+00409D  2  69 02        		adc	#$02
+00409F  2  8D B5 41     		sta	L41B5
+0040A2  2  8D B9 41     		sta	L41B9
+0040A5  2  A9 79        		lda	#$79
+0040A7  2  8D 21 B0     		sta	LB021
+0040AA  2  A9 50        		lda	#$50
+0040AC  2  8D 22 B0     		sta	LB022
+0040AF  2  A0 FB        		ldy	#$FB
+0040B1  2  B9 34 41     L40B1:		lda	L4134,Y
+0040B4  2  99 00 FF     		sta	LFF00,Y
+0040B7  2  88           		dey
+0040B8  2  C0 FF        		cpy	#$FF
+0040BA  2  D0 F5        		bne	L40B1
+0040BC  2  A0 00        		ldy	#$00
+0040BE  2  B9 E0 40     L40BE:		lda	L40E0,Y
+0040C1  2  38           		sec
+0040C2  2  20 3B 41     		jsr	L413B
+0040C5  2  C8           		iny
+0040C6  2  C0 0D        		cpy	#$0D
+0040C8  2  90 F4        		bcc	L40BE
+0040CA  2  A5 14        		lda	RTCLOK+2
+0040CC  2  69 07        		adc	#$07
+0040CE  2  C5 14        L40CE:		cmp	RTCLOK+2
+0040D0  2  D0 FC        		bne	L40CE
+0040D2  2  A0 46        		ldy	#$46
+0040D4  2  B9 ED 40     L40D4:		lda	L40ED,Y
+0040D7  2  20 39 41     		jsr	L4139
+0040DA  2  88           		dey
+0040DB  2  10 F7        		bpl	L40D4
+0040DD  2  4C 6A 41     		jmp	prtsio
+0040E0  2               ;		ldy	#$01
+0040E0  2               ;			rts
+0040E0  2               
+0040E0  2  D9 D4 DE D3  L40E0:		.byte	$D9, $D4, $DE, $D3, $60, $70, $AF, $B4		;XEP80 initialisation
+0040E4  2  60 70 AF B4  
+0040E8  2  00 80 D0 C5  		.byte	$00, $80, $D0, $C5, $DC
+0040EC  2  DC           
+0040ED  2               		;cmp	LDED4,Y
+0040ED  2               		;.byte	$D3
+0040ED  2               		;rts
+0040ED  2               		;bvs L4096
+0040ED  2               		;ldy $00,X
+0040ED  2               		;.byte $80
+0040ED  2               		;bne L40B1
+0040ED  2               		;.byte $DC
+0040ED  2  9B 66 66 75  L40ED:		.byte	$9B, "ffuP treboR yB  09/70/50  .dellatsnI 2.1 noisrev revirD 08-PEX mreTboB"
+0040F1  2  50 20 74 72  
+0040F5  2  65 62 6F 52  
+004134  2               		;.byte $9B
+004134  2               		;ror MLTTMP
+004134  2               		;adc TEMP,X
+004134  2               		;jsr L7274
+004134  2               		;adc PALNTS
+004134  2               		;.byte $6F,$52
+004134  2               		;jsr L4279
+004134  2               		;jsr L3020
+004134  2               		;and L372F,Y
+004134  2               		;bmi L4133
+004134  2               		;and STATUS,X
+004134  2               		;jsr L2E20
+004134  2               		;.byte $64
+004134  2               		;adc BUFSTR
+004134  2               		;jmp (L7461)
+004134  2               		;.byte $73
+004134  2               		;ror L2049
+004134  2               		;.byte $32
+004134  2               		;rol L2031
+004134  2               		;ror L696F
+004134  2               		;.byte $73,$72
+004134  2               		;adc DELTAR
+004134  2               		;jsr L6572
+004134  2               		;ror SAVADR+1,X
+004134  2               		;.byte $72,$44
+004134  2               		;jsr L3830
+004134  2               		;and L4550
+004134  2               		;cli
+004134  2               		;jsr L726D
+004134  2               		;adc ROWCRS
+004134  2               		;.byte $62,$6F
+004134  2               L4133:		;.byte $42
+004134  2  48           L4134:		pha
+004135  2  20 74 E4     		jsr	WARMSV
+004138  2  68           		pla
 004139  2               
 004139  2               ;
 004139  2               ; OUTPUT-Routine
 004139  2               ;
-004139  2               ;L4139:      clc
-004139  2               ;            bit BUFRFL					;jump over $38 (SEC)
-004139  2               ;L413C:      php
-004139  2               ;            nop
-004139  2               ;            nop
-004139  2               ;            nop
-004139  2               ;            nop
-004139  2               ;            nop
-004139  2               ;            nop
-004139  2               ;            nop
-004139  2               ;            plp
-004139  2               ;            ror A
-004139  2               ;            ror A
-004139  2               ;            ror A
-004139  2               ;            ror A
-004139  2               ;            ror A
-004139  2               ;            ldx #$00
-004139  2               ;            sei
-004139  2               ;            stx NMIEN
-004139  2               ;            sta WSYNC
-004139  2               ;            stx PORTA
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
-004139  2               ;            ror A
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
-004139  2               ;            ror A
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
-004139  2               ;            ror A
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
-004139  2               ;            ror A
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
-004139  2               ;            ror A
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
-004139  2               ;            ror A
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
-004139  2               ;            ror A
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
-004139  2               ;            ror A
-004139  2               ;            sta WSYNC
-004139  2               ;            sta PORTA
+004139  2               ;L4139:		clc
+004139  2               ;      		bit BUFRFL				;jump over $38 (SEC)
+004139  2               ;L413C:		php
+004139  2               ;      		nop
+004139  2               ;      		nop
+004139  2               ;      		nop
+004139  2               ;      		nop
+004139  2               ;      		nop
+004139  2               ;      		nop
+004139  2               ;      		nop
+004139  2               ;      		plp
+004139  2               ;      		ror A
+004139  2               ;      		ror A
+004139  2               ;      		ror A
+004139  2               ;      		ror A
+004139  2               ;      		ror A
+004139  2               ;      		ldx #$00
+004139  2               ;      		sei
+004139  2               ;      		stx NMIEN
+004139  2               ;      		sta WSYNC
+004139  2               ;      		stx PORTA
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
+004139  2               ;      		ror A
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
+004139  2               ;      		ror A
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
+004139  2               ;      		ror A
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
+004139  2               ;      		ror A
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
+004139  2               ;      		ror A
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
+004139  2               ;      		ror A
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
+004139  2               ;      		ror A
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
+004139  2               ;      		ror A
+004139  2               ;      		sta WSYNC
+004139  2               ;      		sta PORTA
 004139  2               ;
-004139  2               ;            lda #$FF					;stop-bit
-004139  2               ;            sta WSYNC					;and enable interrupts
-004139  2               ;            sta PORTA
-004139  2               ;            sta NMIEN
-004139  2               ;            cli
+004139  2               ;      		lda #$FF				;stop-bit
+004139  2               ;      		sta WSYNC				;and enable interrupts
+004139  2               ;      		sta PORTA
+004139  2               ;      		sta NMIEN
+004139  2               ;      		cli
 004139  2               ;
-004139  2               ;            ldx #$20					;wait some time
-004139  2               ;L41A2:      dex
-004139  2               ;            bpl L41A2
+004139  2               ;      		ldx #$20				;wait some time
+004139  2               ;L41A2:		dex
+004139  2               ;      		bpl L41A2
 004139  2               ;
-004139  2               ;L41A5:      lda PORTA					;burst, ack
-004139  2               ;            and #$20
-004139  2               ;            beq L41A5
-004139  2               ;            rts
-004139  2  18           L4139:      	clc
-00413A  2  24 38        		bit BUFRFL					;jump over $38 (SEC)
-00413C  2               L413C:
-00413C  2  78           OUT:		sei
-00413D  2  A2 00        		ldx	#0
-00413F  2  8E 0E D4     		stx	NMIEN
-004142  2  8E 00 D4     		stx	DMACLT
-004145  2  A0 3C        		LDY	#CA2HIGH			;CA2=1
-004147  2  20 7A 41     		JSR	SEND				;SEND START BIT (=0)
-00414A  2  A2 08        		LDX	#08				;SETUP BIT COUNT OF 9
-00414C  2  EA           		NOP
-00414D  2  EA           		NOP
-00414E  2  EA           		NOP					;2+2+2+2=8
-00414F  2  6A           OUT0:		ROR	A				;PUT BIT INTO CARRY
-004150  2  B0 09        		BCS	HI
-004152  2  90 00        		BCC	LO				;2+3=5 CYCLES TO LO
-004154  2  A0 3C        LO:		LDY	#CA2HIGH			;5+2 CYCLES TO JSR
-004156  2  20 7A 41     		JSR	SEND				;SEND A 0
-004159  2  90 07        		BCC	OUT1				;3 CYCLES
-00415B  2  A0 34        HI:		LDY	#CA2LOW				;3+4 CYCLES TO JSR
-00415D  2  20 7A 41     		JSR	SEND				;SEND A 1
-004160  2  B0 00        		BCS	OUT1				;3 CYCLES
-004162  2  CA           OUT1:		DEX					;NEXT BIT 2 CYC
-004163  2  10 EA        		BPL	OUT0				;MORE 3 OR 2 CYC
-004165  2  30 00        		BMI	OUT2				;SEND STOP BIT 3 CYC
-004167  2  A0 34        OUT2:		LDY	#CA2LOW				;SEND A 1
-004169  2  D0 00        		BNE	OUT3
-00416B  2  20 7A 41     OUT3:		JSR	SEND				;2+3+4+3=12
-00416E  2  58           		cli
-00416F  2  A2 FF        		ldx	#$ff
-004171  2  8E 0E D4     		stx	NMIEN
-004174  2  A2 22        		ldx	#$22
-004176  2  8E 00 D4     		stx	DMACLT
-004179  2  60           		RTS
+004139  2               ;L41A5:		lda PORTA				;burst, ack
+004139  2               ;      		and #$20
+004139  2               ;      		beq L41A5
+004139  2               ;      		rts
+004139  2               
+004139  2               ;
+004139  2               ;		76543210
+004139  2               ;		H      L
+004139  2               ;
+004139  2  18           L4139:		clc
+00413A  2  24 38        		bit BUFRFL				;jump over $38 (SEC)
+00413C  2               
+00413C  2  2A           L413C:		rol
+00413D  2  2A           		rol
+00413E  2  2A           		rol
+00413F  2               
+00413F  2  78           		sei
+004140  2               
+004140  2  A2 3C        		ldx	#CA2HIGH			;startbit
+004142  2  8E 0E D4     		stx	NMIEN				;hi-bits zero
+004145  2  8E 0A D4     		stx	WSYNC
+004148  2  8E 02 D3     		stx	PACTL
+00414B  2               
+00414B  2  A2 08        		ldx	#8
+00414D  2  48           outbit:		pha
+00414E  2  29 08        		and	#$08
+004150  2  49 3C        		eor	#CA2HIGH			;$3C
+004152  2  8D 0A D4     		sta	WSYNC
+004155  2  8D 02 D3     		sta	PACTL
+004158  2  68           		pla
+004159  2  6A           		ror
+00415A  2  CA           		dex
+00415B  2  10 F0        		bpl	outbit
+00415D  2               
+00415D  2  8D 0A D4     		sta	WSYNC				;stopbit
+004160  2  A9 34        		lda	#CA2LOW
+004162  2  8D 02 D3     		sta	PACTL
+004165  2               ;		sta	WSYNC
+004165  2               
+004165  2  58           		cli
+004166  2  8E 0E D4     		stx	NMIEN				;x = $ff
+004169  2  60           		rts
+00416A  2               
+00416A  2  A0 00        prtsio:		ldy	#0
+00416C  2  B9 7A 41     prtsio2:	lda	message, y
+00416F  2  F0 06        		beq	prtsio1
+004171  2  20 39 41     		jsr	L4139
+004174  2  C8           		iny
+004175  2  D0 F5        		bne	prtsio2
+004177  2  A0 01        prtsio1:	ldy	#1
+004179  2  60           		rts
 00417A  2               
-00417A  2  8C 02 D3     SEND:		STY	PACTL				;OUTPUT BIT
-00417D  2  A0 0C        		LDY	#12				;TIMER FOR 15.7KB
-00417F  2  88           S1:		DEY
-004180  2  D0 FD        		BNE	S1				;5*Y-1 CYCLES
-004182  2  F0 00        		BEQ	S2				;3
-004184  2  EA           S2:		NOP
-004185  2  EA           		NOP
-004186  2  EA           		NOP
-004187  2  EA           		NOP					;2+2+2+2=8
-004188  2  60           S3:		RTS					;6 CYCLES
-004189  2               
-004189  2  00 00 00 00  		.byte	0, 0, 0, 0, 0, 0, 0, 0
-00418D  2  00 00 00 00  
-004191  2  00 00 00 00  		.byte	0, 0, 0, 0, 0, 0, 0, 0
-004195  2  00 00 00 00  
-004199  2  00 00 00 00  		.byte	0, 0, 0, 0, 0, 0, 0, 0
-00419D  2  00 00 00 00  
-0041A1  2  00 00 00 00  		.byte	0, 0, 0, 0, 0, 0, 0, 0
-0041A5  2  00 00 00 00  
-0041A9  2  00 00 00 00  		.byte	0, 0, 0, 0
+00417A  2  53 49 4F 20  message:	.byte	"SIO PiXEP-80 version 1.0 08/2025 by Roland Scholz", $9B, 0
+00417E  2  50 69 58 45  
+004182  2  50 2D 38 30  
 0041AD  2               
 0041AD  2  C9 1B                    cmp #$1B
 0041AF  2  D0 06                    bne L41B7
@@ -966,10 +971,6 @@ Current file: ..\src\bobxep80.a65
 00422F  2               ;            *= $02E0
 00422F  2               ;
 00422F  2               ;            .word L422F
-00422F  2               
-00422F  2               ;		.word $02e0
-00422F  2               ;		.word $02e1
-00422F  2               ;		.word $4001
 00422F  2               
 00422F  1               ;
 00422F  1               

@@ -7,8 +7,6 @@ call var-def.cmd
 call :compile_module bobxep80 4000
 call :compile_module bobxep80_runad 02e0
 
-pause
-
 if NOT %result%==0 goto ende
 
 
@@ -16,9 +14,8 @@ cd %REL%
 copy %RES%\dos25.atr .
 
 copy /Y /B bobxep80.com + bobxep80_runad.com module1.btm
-rem %TOOLS%\xfddos -i dos25.atr xephandl.com
-
 %TOOLS%\xfddos -i dos25.atr module1.btm
+
 rem %TOOLS%\xfddos -i dos25.atr h6100.obj
 rem %TOOLS%\xfddos -i dos25.atr move.obj
 
@@ -37,7 +34,7 @@ move *.o obj > nul
 move *.a obj > nul
 
 rem "C:\Program Files (x86)\Altirra\Altirra64.exe" C:\github\atari-adm3a-xep80\release\DOS25.atr
-
+"C:\Program Files (x86)\Aspeqt\AspeQt.exe"
 goto eof
 
 :ende

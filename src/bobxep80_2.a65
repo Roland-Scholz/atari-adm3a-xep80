@@ -80,167 +80,180 @@ LFFFF       = $FFFF
 ;
 ; Start of code
 ;
-            .org $4000
+		.org $4000
 ;
-L4000:      rts
-L4001:      lda LB000					;quit if $B000 <> $54
-			cmp #$54
-	bne L4000
+L4000:		rts
+L4001:		lda	LB000				;quit if $B000 <> $54
+		cmp	#$54
+		bne	L4000
 
-			ldx	#CA2LOW					;set stopbit
-			stx	PACTL
-	  	    	      
-;			ldx #$FF					;PORTA all '1'
-;			stx PORT			
-;			lda PACTL					;0b11111011
-;			and #$FB					;set DDR=0 (Data direction register)
-;			sta PACTL					;reset Bit2			
-;			stx PORTA					;all output
-;			ora #$04
-;			sta PACTL					;select output register
-;			stx PORTA					;PORTA all '1'
+		ldx	#CA2LOW				;set stopbit
+		stx	PACTL
+	  	          
+;		ldx #$FF				;PORTA all '1'
+;		stx PORT			
+;		lda PACTL				;0b11111011
+;		and #$FB				;set DDR=0 (Data direction register)
+;		sta PACTL				;reset Bit2			
+;		stx PORTA				;all output
+;		ora #$04
+;		sta PACTL				;select output register
+;		stx PORTA				;PORTA all '1'
 	    
-			lda RTCLOK+2				;wait 1-2 jiffys
-            adc #$02
-L4024:      cmp RTCLOK+2
-            bne L4024
+		lda	RTCLOK+2			;wait 1-2 jiffys
+		adc	#$02
+L4024:		cmp	RTCLOK+2
+		bne	L4024
 			
-			lda	PAL
-			and $0e
-			bne	NTSC 
+		lda	PAL
+		and	#$0e
+		bne	NTSC 
   	    
-            lda #$D7					;set PAL mode
-            jsr L413B					;CMD
-
-NTSC:       lda LB02E
-            sta DSKUTL
-            lda LB02F
-            sta DSKUTL+1
-            ldy #$00
-            lda (DSKUTL),Y
-            sec
-            sbc #$01
-            sta (DSKUTL),Y
-            sta L00AE
-            pha
-            tay
-            ldx #$00
-            stx L00AB
-            stx L00AD
-            stx L0088
-            stx L00AC
-            jsr LB032
-            lda L009D
-            sta L0089
-            pla
-            clc
-            adc L009D
-            sta L40B6
-            sta L41F4
-            sta L4209
-            sta L421E
-            sta L422D
-            sta L41ED
-            sta L407E
-            sta L40AB
-            lda LB018
-            sta L4136
-            lda LB019
-            sta L4137
-            lda #$00
-            sta LB018
-            lda #$50
-            sta LB019
-            lda LB021
-            sta L41D7
-            lda LB022
-            sta L41D8
-            lda LB02E
-            clc
-            adc #$6A
-            sta L41B4
-            sta L41B8
-            lda LB02F
-            adc #$02
-            sta L41B5
-            sta L41B9
-            lda #$79
-            sta LB021
-            lda #$50
-            sta LB022
-            ldy #$FB
-L40B1:      lda L4134,Y
-            sta LFF00,Y
-            dey
-            cpy #$FF
-            bne L40B1
-            ldy #$00
-L40BE:      lda L40E0,Y
-            sec
-            jsr L413B
-            iny
-            cpy #$0D
-            bcc L40BE
-            lda RTCLOK+2
-            adc #$07
-L40CE:      cmp RTCLOK+2
-            bne L40CE
-            ldy #$46
-L40D4:      lda L40ED,Y
-            jsr L4139
-            dey
-            bpl L40D4
-            ldy #$01
-            rts
-L40E0:      cmp LDED4,Y
-            .byte $D3
-            rts
-            bvs L4096
-            ldy $00,X
-            .byte $80
-            bne L40B1
-            .byte $DC
-L40ED:      .byte $9B
-            ror MLTTMP
-            adc TEMP,X
-            jsr L7274
-            adc PALNTS
-            .byte $6F,$52
-            jsr L4279
-            jsr L3020
-            and L372F,Y
-            bmi L4133
-            and STATUS,X
-            jsr L2E20
-            .byte $64
-            adc BUFSTR
-            jmp (L7461)
-            .byte $73
-            ror L2049
-            .byte $32
-            rol L2031
-            ror L696F
-            .byte $73,$72
-            adc DELTAR
-            jsr L6572
-            ror SAVADR+1,X
-            .byte $72,$44
-            jsr L3830
-            and L4550
-            cli
-            jsr L726D
-            adc ROWCRS
-            .byte $62,$6F
-L4133:      .byte $42
-L4134:      pha
-            jsr WARMSV
-            pla
+		lda	#$D7				;set PAL mode
+		jsr	L413B				;CMD
+	
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		
+NTSC:		lda	LB02E
+		sta	DSKUTL
+		lda	LB02F
+		sta	DSKUTL+1
+		ldy	#$00
+		lda	(DSKUTL),Y
+		sec	
+		sbc	#$01
+		sta	(DSKUTL),Y
+		sta	L00AE
+		pha	
+		tay	
+		ldx	#$00
+		stx	L00AB
+		stx	L00AD
+		stx	L0088
+		stx	L00AC
+		jsr	LB032
+		lda	L009D
+		sta	L0089
+		pla	
+		clc	
+		adc	L009D
+		sta	L40B6
+		sta	L41F4
+		sta	L4209
+		sta	L421E
+		sta	L422D
+		sta	L41ED
+		sta	L407E
+		sta	L40AB
+		lda	LB018
+		sta	L4136
+		lda	LB019
+		sta	L4137
+		lda	#$00
+		sta	LB018
+		lda	#$50
+		sta	LB019
+		lda	LB021
+		sta	L41D7
+		lda	LB022
+		sta	L41D8
+		lda	LB02E
+		clc	
+		adc	#$6A
+		sta	L41B4
+		sta	L41B8
+		lda	LB02F
+		adc	#$02
+		sta	L41B5
+		sta	L41B9
+		lda	#$79
+		sta	LB021
+		lda	#$50
+		sta	LB022
+		ldy	#$FB
+L40B1:		lda	L4134,Y
+		sta	LFF00,Y
+		dey	
+		cpy	#$FF
+		bne	L40B1
+		ldy	#$00
+L40BE:		lda	L40E0,Y
+		sec	
+		jsr	L413B
+		iny	
+		cpy	#$0D
+		bcc	L40BE
+		lda	RTCLOK+2
+		adc	#$07
+L40CE:		cmp	RTCLOK+2
+		bne	L40CE
+		ldy	#$46
+L40D4:		lda	L40ED,Y
+		jsr	L4139
+		dey	
+		bpl	L40D4
+		jmp	prtsio
+;		ldy	#$01
+;			rts	
+		
+L40E0:		.byte	$D9, $D4, $DE, $D3, $60, $70, $AF, $B4		;XEP80 initialisation
+		.byte	$00, $80, $D0, $C5, $DC
+		;cmp	LDED4,Y
+		;.byte	$D3
+		;rts
+		;bvs L4096
+		;ldy $00,X
+		;.byte $80
+		;bne L40B1
+		;.byte $DC
+L40ED:		.byte	$9B, "ffuP treboR yB  09/70/50  .dellatsnI 2.1 noisrev revirD 08-PEX mreTboB"
+		;.byte $9B
+		;ror MLTTMP
+		;adc TEMP,X
+		;jsr L7274
+		;adc PALNTS
+		;.byte $6F,$52
+		;jsr L4279
+		;jsr L3020
+		;and L372F,Y
+		;bmi L4133
+		;and STATUS,X
+		;jsr L2E20
+		;.byte $64
+		;adc BUFSTR
+		;jmp (L7461)
+		;.byte $73
+		;ror L2049
+		;.byte $32
+		;rol L2031
+		;ror L696F
+		;.byte $73,$72
+		;adc DELTAR
+		;jsr L6572
+		;ror SAVADR+1,X
+		;.byte $72,$44
+		;jsr L3830
+		;and L4550
+		;cli
+		;jsr L726D
+		;adc ROWCRS
+		;.byte $62,$6F
+L4133:		;.byte $42
+L4134:		pha
+		jsr	WARMSV
+		pla
 	    
 ;
 ; OUTPUT-Routine
 ;
 ;L4139:		clc
-;      		bit BUFRFL					;jump over $38 (SEC)
+;      		bit BUFRFL				;jump over $38 (SEC)
 ;L413C:		php
 ;      		nop
 ;      		nop
@@ -287,54 +300,70 @@ L4134:      pha
 ;      		sta WSYNC
 ;      		sta PORTA
 ;	   		
-;      		lda #$FF					;stop-bit
-;      		sta WSYNC					;and enable interrupts
+;      		lda #$FF				;stop-bit
+;      		sta WSYNC				;and enable interrupts
 ;      		sta PORTA
 ;      		sta NMIEN
 ;      		cli
 ;	   		
-;      		ldx #$20					;wait some time
+;      		ldx #$20				;wait some time
 ;L41A2:		dex
 ;      		bpl L41A2
 ;	   		
-;L41A5:		lda PORTA					;burst, ack
+;L41A5:		lda PORTA				;burst, ack
 ;      		and #$20
 ;      		beq L41A5
 ;      		rts
+
+;
+;		76543210
+;		H      L	
+;
 L4139:		clc
-			bit BUFRFL					;jump over $38 (SEC)
-L413C:
-OUT:		ldx	#8
-outcomp:	pha
-			lda	#CA2LOW
-			bcs	next
-			lda	#CA2HIGH				
-next:		sta	bitbuf+1,x
-		pla
+		bit BUFRFL				;jump over $38 (SEC)
+
+L413C:		rol
 		rol
-		dex
-		bpl	outcomp
+		rol
 		
 		sei
-		ldx	#0
-		stx	NMIEN
-
-		lda	bitbuf, x
+		
+		ldx	#CA2HIGH			;startbit
+		stx	NMIEN				;hi-bits zero
+		stx	WSYNC
+		stx	PACTL
+		
+		ldx	#8		
+outbit:		pha	
+		and	#$08
+		eor	#CA2HIGH			;$3C		
 		sta	WSYNC
-		 
+		sta	PACTL
+		pla
+		ror
+		dex
+		bpl	outbit
+		
+		sta	WSYNC				;stopbit
+		lda	#CA2LOW
+		sta	PACTL
+;		sta	WSYNC
+
 		cli
-		ldx	#$ff
-		stx	NMIEN
+		stx	NMIEN				;x = $ff
 		rts
 							
-
-bitbuf:		.byte	CA2HIGH, 0, 0, 0, 0, 0, 0, 0
-		.byte	0, 0, CA2LOW
-		.byte	0, 0, 0, 0, 0, 0, 0, 0
-		.byte	0, 0, 0, 0, 0, 0, 0, 0
-		.byte	0, 0, 0, 0, 0, 0, 0, 0
-		.byte	0, 0, 0, 0
-
+prtsio:		ldy	#0
+prtsio2:	lda	message, y
+		beq	prtsio1
+		jsr	L4139
+		iny
+		bne	prtsio2
+prtsio1:	ldy	#1
+		rts
+		
+message:	.byte	"SIO PiXEP-80 version 1.0 08/2025 by Roland Scholz", $9B, 0	
+		
             cmp #$1B
             bne L41B7
             ldx #$C0
