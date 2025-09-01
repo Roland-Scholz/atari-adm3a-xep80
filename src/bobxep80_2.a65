@@ -204,47 +204,10 @@ L40D4:		lda	L40ED,Y
 		
 L40E0:		.byte	$D9, $D4, $DE, $D3, $60, $70, $AF, $B4		;XEP80 initialisation
 		.byte	$00, $80, $D0, $C5, $DC
-		;cmp	LDED4,Y
-		;.byte	$D3
-		;rts
-		;bvs L4096
-		;ldy $00,X
-		;.byte $80
-		;bne L40B1
-		;.byte $DC
+		
 L40ED:		.byte	$9B, "ffuP treboR yB  09/70/50  .dellatsnI 2.1 noisrev revirD 08-PEX mreTboB"
-		;.byte $9B
-		;ror MLTTMP
-		;adc TEMP,X
-		;jsr L7274
-		;adc PALNTS
-		;.byte $6F,$52
-		;jsr L4279
-		;jsr L3020
-		;and L372F,Y
-		;bmi L4133
-		;and STATUS,X
-		;jsr L2E20
-		;.byte $64
-		;adc BUFSTR
-		;jmp (L7461)
-		;.byte $73
-		;ror L2049
-		;.byte $32
-		;rol L2031
-		;ror L696F
-		;.byte $73,$72
-		;adc DELTAR
-		;jsr L6572
-		;ror SAVADR+1,X
-		;.byte $72,$44
-		;jsr L3830
-		;and L4550
-		;cli
-		;jsr L726D
-		;adc ROWCRS
-		;.byte $62,$6F
-L4133:		;.byte $42
+;                             BobTerm XEP-80 Driver version 1.2 Installed.  05/07/90  By Robert Puff"
+
 L4134:		pha
 		jsr	WARMSV
 		pla

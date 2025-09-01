@@ -13,18 +13,10 @@ if NOT %result%==0 goto ende
 cd %REL%
 copy %RES%\dos25.atr .
 
+rem copy %RES%\module1.btm .
 copy /Y /B bobxep80.com + bobxep80_runad.com module1.btm
+
 %TOOLS%\xfddos -i dos25.atr module1.btm
-
-rem %TOOLS%\xfddos -i dos25.atr h6100.obj
-rem %TOOLS%\xfddos -i dos25.atr move.obj
-
-rem %TOOLS%\xfddos -i dos25.atr C:\github\Sally-2\atari\autoterm.com	
-
-rem %TOOLS%\xfddos -i dos25.atr adm3ax80.com
-	
-rem ..\%TOOLS%\xfddos -i boot.atr bootsec.com
-rem echo on
 
 mkdir obj > nul 2> nul
 mkdir lst > nul 2> nul

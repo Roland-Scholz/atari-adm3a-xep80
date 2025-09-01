@@ -721,49 +721,12 @@ Current file: ..\src\bobxep80.a65
 0040E4  2  60 70 AF B4  
 0040E8  2  00 80 D0 C5  		.byte	$00, $80, $D0, $C5, $DC
 0040EC  2  DC           
-0040ED  2               		;cmp	LDED4,Y
-0040ED  2               		;.byte	$D3
-0040ED  2               		;rts
-0040ED  2               		;bvs L4096
-0040ED  2               		;ldy $00,X
-0040ED  2               		;.byte $80
-0040ED  2               		;bne L40B1
-0040ED  2               		;.byte $DC
+0040ED  2               
 0040ED  2  9B 66 66 75  L40ED:		.byte	$9B, "ffuP treboR yB  09/70/50  .dellatsnI 2.1 noisrev revirD 08-PEX mreTboB"
 0040F1  2  50 20 74 72  
 0040F5  2  65 62 6F 52  
-004134  2               		;.byte $9B
-004134  2               		;ror MLTTMP
-004134  2               		;adc TEMP,X
-004134  2               		;jsr L7274
-004134  2               		;adc PALNTS
-004134  2               		;.byte $6F,$52
-004134  2               		;jsr L4279
-004134  2               		;jsr L3020
-004134  2               		;and L372F,Y
-004134  2               		;bmi L4133
-004134  2               		;and STATUS,X
-004134  2               		;jsr L2E20
-004134  2               		;.byte $64
-004134  2               		;adc BUFSTR
-004134  2               		;jmp (L7461)
-004134  2               		;.byte $73
-004134  2               		;ror L2049
-004134  2               		;.byte $32
-004134  2               		;rol L2031
-004134  2               		;ror L696F
-004134  2               		;.byte $73,$72
-004134  2               		;adc DELTAR
-004134  2               		;jsr L6572
-004134  2               		;ror SAVADR+1,X
-004134  2               		;.byte $72,$44
-004134  2               		;jsr L3830
-004134  2               		;and L4550
-004134  2               		;cli
-004134  2               		;jsr L726D
-004134  2               		;adc ROWCRS
-004134  2               		;.byte $62,$6F
-004134  2               L4133:		;.byte $42
+004134  2               ;                             BobTerm XEP-80 Driver version 1.2 Installed.  05/07/90  By Robert Puff"
+004134  2               
 004134  2  48           L4134:		pha
 004135  2  20 74 E4     		jsr	WARMSV
 004138  2  68           		pla

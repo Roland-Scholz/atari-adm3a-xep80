@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "xep80")(type "KiCad")(uri "${KIPRJMOD}/xep80.kicad_sym")(options "")(descr ""))
+)

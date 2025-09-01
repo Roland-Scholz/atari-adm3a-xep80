@@ -12,7 +12,7 @@ if NOT %result%==0 goto ende
 
 
 cd %REL%
-copy %RES%\dos25.atr .
+copy %RES%\DOS25-sioxep.atr dos25.atr
 
 rem copy /Y /B relocator.com + xep80han.com xephandl.com
 rem %TOOLS%\xfddos -i dos25.atr xephandl.com
