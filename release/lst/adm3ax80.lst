@@ -189,9 +189,9 @@ Current file: ..\src\adm3ax80.a65
 00200C  1  A9 00        INPUT:		lda	#00				;TIME CRITICAL CODE
 00200E  1  AA           		tax					;MUST NOT CROSS A
 00200F  1  A0 1F        		ldy	#31				;PAGE BOUNDARY
-002011  1  8D CB 25     		sta	DATIN
+002011  1  8D DE 25     		sta	DATIN
 002014  1  AD 00 D3     IN0:		lda 	PORTA 				;4
-002017  1  2D CC 25     		and	INMSK 				;4
+002017  1  2D DF 25     		and	INMSK 				;4
 00201A  1  F0 08        		beq	IN01				;3 IF A 0, 2 IF NOT
 00201C  1  CA           		dex
 00201D  1  D0 F5        		bne	IN0
@@ -208,19 +208,19 @@ Current file: ..\src\adm3ax80.a65
 00202E  1  88           IN2:		dey
 00202F  1  D0 FD        		bne	IN2				;5*Y-1
 002031  1  AD 00 D3     		lda	PORTA				;4 GET BYTE
-002034  1  2D CC 25     		and	INMSK				;4 GET BIT
+002034  1  2D DF 25     		and	INMSK				;4 GET BIT
 002037  1  18           		clc					;2
 002038  1  F0 01        		beq	IN25				;0=3,1=2
 00203A  1  38           		sec					;1=2
 00203B  1  90 00        IN25:		bcc	IN26				;0=3,1=2
 00203D  1  CA           IN26:		dex					;2 DEC COUNT
 00203E  1  30 05        		bmi	IN3				;2 (3 DONE)
-002040  1  6E CB 25     		ror	DATIN				;6 SHIFT IN BIT
+002040  1  6E DE 25     		ror	DATIN				;6 SHIFT IN BIT
 002043  1  90 E7        		bcc	IN10				;3 ALWAYS
 002045  1  A0 0F        IN3:		ldy	#15				;DELAY 1/2 BIT
 002047  1  88           IN33:		dey
 002048  1  D0 FD        		bne	IN33
-00204A  1  AD CB 25     		lda	DATIN				;GET CHAR (Y=0)
+00204A  1  AD DE 25     		lda	DATIN				;GET CHAR (Y=0)
 00204D  1  90 16        		bcc	I5				;RETURN IF CHAR
 00204F  1  10 0F        		bpl	I0				;HORIZ WITH NO VERT
 002051  1  29 7F        		and	#$7F				;CLEAR UPPER FLAG
@@ -243,7 +243,7 @@ Current file: ..\src\adm3ax80.a65
 002069  1  18           XOUTPUT:	clc 					;CMD FLAG=0 FOR CHAR
 00206A  1  A0 00        OUT: 		ldy 	#00
 00206C  1               
-00206C  1  20 BD 25     		jsr	DISAB
+00206C  1  20 D0 25     		jsr	DISAB
 00206F  1  20 9B 20     		jsr 	SEND				;SEND staRT BIT
 002072  1               
 002072  1  A2 08        		ldx 	#08				;SETUP BIT COUNT OF 9
@@ -256,17 +256,17 @@ Current file: ..\src\adm3ax80.a65
 00207C  1  A0 00        LO:		ldy 	#00				;5+2 CYCLES TO JSR
 00207E  1  20 9B 20     		jsr 	SEND				;SEND A 0
 002081  1  90 08        		bcc 	OUT1				;3 CYCLES
-002083  1  AC CD 25     HI:		ldy 	OUTMS				;3+4 CYCLES TO JSR
+002083  1  AC E0 25     HI:		ldy 	OUTMS				;3+4 CYCLES TO JSR
 002086  1  20 9B 20     		jsr 	SEND				;SEND A 1
 002089  1  B0 00        		bcs 	OUT1				;3 CYCLES
 00208B  1  CA           OUT1:		dex					;NEXT BIT 2 CYC
 00208C  1  10 E9        		bpl 	OUT0				;MORE 3 OR 2 CYC
 00208E  1  30 00        		bmi 	OUT2				;SEND STOP BIT 3 CYC
-002090  1  AC CD 25     OUT2:		ldy 	OUTMS				;SEND A 1
+002090  1  AC E0 25     OUT2:		ldy 	OUTMS				;SEND A 1
 002093  1  D0 00        		bne 	OUT3
 002095  1  20 9B 20     OUT3:		jsr 	SEND				;2+3+4+3=12
 002098  1               
-002098  1  4C C4 25     		jmp	ENAB
+002098  1  4C D7 25     		jmp	ENAB
 00209B  1               
 00209B  1               
 00209B  1  8C 00 D3     SEND:		sty 	PORTA				;OUTPUT BIT
@@ -288,7 +288,7 @@ Current file: ..\src\adm3ax80.a65
 0020AD  1  18           sioout:		clc 					;CMD FLAG=0 FOR CHAR
 0020AE  1  A0 3C        SOUT: 		ldy 	#$3c				;1, will be inverted, hence 0
 0020B0  1               
-0020B0  1  20 BD 25     		jsr	DISAB
+0020B0  1  20 D0 25     		jsr	DISAB
 0020B3  1  20 DD 20     		jsr 	SIOSEND				;SEND staRT BIT
 0020B6  1               
 0020B6  1  A2 08        		ldx 	#08				;SETUP BIT COUNT OF 9
@@ -311,7 +311,7 @@ Current file: ..\src\adm3ax80.a65
 0020D5  1  D0 00        		bne 	SOUT3
 0020D7  1  20 DD 20     SOUT3:		jsr 	SIOSEND				;2+3+4+3=12
 0020DA  1               
-0020DA  1  4C C4 25     		jmp	ENAB
+0020DA  1  4C D7 25     		jmp	ENAB
 0020DD  1               
 0020DD  1               
 0020DD  1  8C 02 D3     SIOSEND:	sty 	PACTL				;4 OUTPUT BIT
@@ -367,7 +367,7 @@ Current file: ..\src\adm3ax80.a65
 002123  1  49 02        		eor	#2				;2
 002125  1  4A           		lsr					;2
 002126  1  4A           		lsr					;2
-002127  1  6E CB 25     		ror	DATIN				;6 shiftin 0
+002127  1  6E DE 25     		ror	DATIN				;6 shiftin 0
 00212A  1  A5 00        		lda	$0				;3
 00212C  1  EA           		nop
 00212D  1  EA           		nop
@@ -376,7 +376,7 @@ Current file: ..\src\adm3ax80.a65
 002132  1               
 002132  1  4A           sioin4:		lsr					;2 put edge-detect in carry
 002133  1  4A           		lsr					;2
-002134  1  6E CB 25     		ror	DATIN				;6 shift in datin
+002134  1  6E DE 25     		ror	DATIN				;6 shift in datin
 002137  1  AD 00 D3     		lda	PORTA				;4 reset IRQA bit
 00213A  1  AD 02 D3     		lda	PACTL				;4 check other edge
 00213D  1  49 02        		eor	#2				;2
@@ -385,7 +385,7 @@ Current file: ..\src\adm3ax80.a65
 002142  1  88           sioin5:		dey					;2
 002143  1  D0 D6        		bne	sioin3				;3
 002145  1               							; loop = 99 + 5 = 104
-002145  1  2E CB 25     		rol	DATIN
+002145  1  2E DE 25     		rol	DATIN
 002148  1  90 16        		bcc	sioin9				;character data
 00214A  1  10 0F        		bpl	sioin6				;HORIZ WITH NO VERT
 00214C  1  29 7F        		and	#$7F				;CLEAR UPPER FLAG
@@ -405,14 +405,14 @@ Current file: ..\src\adm3ax80.a65
 002161  1               ;============================================================
 002161  1  20 B7 24     start:		jsr	geoutch
 002164  1               
-002164  1  20 8C 25     		jsr	CINIT
+002164  1  20 9F 25     		jsr	CINIT
 002167  1  20 5A 25     		jsr 	EOPEN
 00216A  1  90 18        		bcc	eopenok				;carry-clear, got response
 00216C  1               
 00216C  1  A9 22        		lda	#$22				;no response, show message and reset
 00216E  1  8D 2F 02     		sta	SDMCTL				;switch normal DMA on
 002171  1               
-002171  1  A9 87        		lda	#<noxep80			;if no XEP present
+002171  1  A9 9A        		lda	#<noxep80			;if no XEP present
 002173  1  8D 44 03     		sta	ICBADR				;display message
 002176  1  A9 26        		lda	#>noxep80
 002178  1  8D 45 03     		sta	ICBADR+1
@@ -437,9 +437,9 @@ Current file: ..\src\adm3ax80.a65
 0021A0  1               
 0021A0  1  20 63 24     		jsr	clearvars
 0021A3  1               
-0021A3  1  A9 F5        		lda	#<welcome			;print welcome message
+0021A3  1  A9 08        		lda	#<welcome			;print welcome message
 0021A5  1  85 00        		sta	PTR
-0021A7  1  A9 25        		lda	#>welcome
+0021A7  1  A9 26        		lda	#>welcome
 0021A9  1  85 01        		sta	PTR+1
 0021AB  1  20 DB 24     		jsr	printadm
 0021AE  1               
@@ -537,13 +537,13 @@ Current file: ..\src\adm3ax80.a65
 002234  1               
 002234  1               
 002234  1               serin:
-002234  1  AE F0 25     		ldx	bufstart
-002237  1  EC F1 25     		cpx	bufend
+002234  1  AE 03 26     		ldx	bufstart
+002237  1  EC 04 26     		cpx	bufend
 00223A  1  F0 07        		beq	serinex
 00223C  1               
 00223C  1  E8           		inx
-00223D  1  8E F0 25     		stx	bufstart
-002240  1  BD A8 26     		lda	buffer,x
+00223D  1  8E 03 26     		stx	bufstart
+002240  1  BD BB 26     		lda	buffer,x
 002243  1               
 002243  1  60           serinex:	rts
 002244  1               
@@ -608,9 +608,9 @@ Current file: ..\src\adm3ax80.a65
 0022AA  1               
 0022AA  1  AD 0D D2     myirq1:		lda	SERIN
 0022AD  1               
-0022AD  1  EE F1 25     myirq2:		inc	bufend
-0022B0  1  AC F1 25     		ldy	bufend
-0022B3  1  99 A8 26     		sta	buffer,y
+0022AD  1  EE 04 26     myirq2:		inc	bufend
+0022B0  1  AC 04 26     		ldy	bufend
+0022B3  1  99 BB 26     		sta	buffer,y
 0022B6  1               
 0022B6  1  68           myirqex:	pla
 0022B7  1  A8           		tay
@@ -656,11 +656,11 @@ Current file: ..\src\adm3ax80.a65
 0022DE  1  C9 20        		cmp	#32				;<space = control char?
 0022E0  1  90 5F        		bcc	ctrl
 0022E2  1               
-0022E2  1  AE EB 25     		ldx	escflag				;last key ESC?
+0022E2  1  AE FE 25     		ldx	escflag				;last key ESC?
 0022E5  1  F0 03        		beq	decode1				;no, check other flags
 0022E7  1  4C E2 23     		jmp	decodeesc			;do ESC stuff
 0022EA  1               
-0022EA  1  2C EE 25     decode1:	bit	cflag
+0022EA  1  2C 01 26     decode1:	bit	cflag
 0022ED  1  70 3F        		bvs	getcsry
 0022EF  1  30 2C        		bmi	getcsrx
 0022F1  1               
@@ -668,13 +668,13 @@ Current file: ..\src\adm3ax80.a65
 0022F3  1  90 02        		bcc	decode5
 0022F5  1  A9 20        		lda	#' '
 0022F7  1               
-0022F7  1  0D ED 25     decode5:	ora	hibit
+0022F7  1  0D 00 26     decode5:	ora	hibit
 0022FA  1               
 0022FA  1  20 03 20     decode4:	jsr	OUTPUT				;print char and fall through
 0022FD  1               
 0022FD  1  A9 00        		lda	#0
-0022FF  1  8D EB 25     		sta	escflag
-002302  1  8D EE 25     		sta	cflag
+0022FF  1  8D FE 25     		sta	escflag
+002302  1  8D 01 26     		sta	cflag
 002305  1  8D DE 23     		sta	direct
 002308  1               
 002308  1  E6 55        advancex:	inc	csrx				;increment xpos
@@ -694,7 +694,7 @@ Current file: ..\src\adm3ax80.a65
 00231D  1               ;============================================================
 00231D  1               ; ESC = 'column'+32 'row'+32
 00231D  1               ;============================================================
-00231D  1  0E EE 25     getcsrx:	asl	cflag
+00231D  1  0E 01 26     getcsrx:	asl	cflag
 002320  1               
 002320  1  38           		sec
 002321  1  E9 20        		sbc	#32
@@ -704,7 +704,7 @@ Current file: ..\src\adm3ax80.a65
 002329  1  A9 00        		lda	#0
 00232B  1  4C 06 20     getcsrx1:	jmp	CMD
 00232E  1               
-00232E  1  0E EE 25     getcsry:	asl	cflag
+00232E  1  0E 01 26     getcsry:	asl	cflag
 002331  1               
 002331  1  38           		sec
 002332  1  E9 20        		sbc	#32
@@ -802,7 +802,7 @@ Current file: ..\src\adm3ax80.a65
 0023C7  1  4C 03 20     		jmp	OUTPUT
 0023CA  1               
 0023CA  1  A9 01        escape:		lda	#1
-0023CC  1  8D EB 25     		sta	escflag
+0023CC  1  8D FE 25     		sta	escflag
 0023CF  1  60           		rts
 0023D0  1               
 0023D0  1  A9 00        csrhome:	lda	#0
@@ -812,13 +812,13 @@ Current file: ..\src\adm3ax80.a65
 0023D9  1  A9 80        		lda	#YCR80
 0023DB  1  4C 06 20     		jmp	CMD
 0023DE  1               
-0023DE  1  EE EC 25     direct:		inc	dflag
+0023DE  1  EE FF 25     direct:		inc	dflag
 0023E1  1  60           		rts
 0023E2  1               
 0023E2  1               ;
 0023E2  1               ;
 0023E2  1               ;
-0023E2  1  CE EB 25     decodeesc:	dec	escflag
+0023E2  1  CE FE 25     decodeesc:	dec	escflag
 0023E5  1  AE 95 24     		ldx	escnum
 0023E8  1  DD 96 24     decesc1:	cmp	esctab,x
 0023EB  1  F0 04        		beq	escfound
@@ -837,7 +837,7 @@ Current file: ..\src\adm3ax80.a65
 0023FD  1  60           		rts
 0023FE  1               
 0023FE  1  A9 00        disattr:	lda	#0
-002400  1  8D ED 25     disattr1:	sta	hibit
+002400  1  8D 00 26     disattr1:	sta	hibit
 002403  1  60           		rts
 002404  1               
 002404  1  A9 80        enaattr:	lda	#$80
@@ -849,7 +849,7 @@ Current file: ..\src\adm3ax80.a65
 00240F  1  4C 06 20     		jmp	CMD
 002412  1               
 002412  1  A9 C0        csrpos:		lda	#$c0
-002414  1  8D EE 25     		sta	cflag
+002414  1  8D 01 26     		sta	cflag
 002417  1  60           		rts
 002418  1               
 002418  1               
@@ -886,20 +886,20 @@ Current file: ..\src\adm3ax80.a65
 00244D  1  E9 17        		sbc	#23
 00244F  1  F0 E3        		beq	clrline
 002451  1               
-002451  1  8D EF 25     		sta	cnt
+002451  1  8D 02 26     		sta	cnt
 002454  1  A5 55        		lda	csrx
 002456  1  A9 9C        clrend1:	lda	#DELIN
 002458  1  20 03 20     		jsr	OUTPUT
-00245B  1  CE EF 25     		dec	cnt
+00245B  1  CE 02 26     		dec	cnt
 00245E  1  D0 F6        		bne	clrend1
 002460  1  4C 34 24     		jmp	clrline
 002463  1               
 002463  1               
 002463  1  A9 00        clearvars:	lda	#0
-002465  1  8D ED 25     		sta	hibit
-002468  1  8D EB 25     		sta	escflag
-00246B  1  8D EC 25     		sta	dflag
-00246E  1  8D EE 25     		sta	cflag
+002465  1  8D 00 26     		sta	hibit
+002468  1  8D FE 25     		sta	escflag
+00246B  1  8D FF 25     		sta	dflag
+00246E  1  8D 01 26     		sta	cflag
 002471  1  85 55        		sta	csrx
 002473  1  85 54        		sta	csry
 002475  1  60           		rts
@@ -952,10 +952,10 @@ Current file: ..\src\adm3ax80.a65
 0024B7  1  AE 06 E4     geoutch:	ldx	$E406				;CHAR PUT routine
 0024BA  1  AC 07 E4     		ldy	$E407
 0024BD  1  E8           		inx
-0024BE  1  8E F3 25     		stx	OUTCH+1
+0024BE  1  8E 06 26     		stx	OUTCH+1
 0024C1  1  D0 01        		bne	geoutch1
 0024C3  1  C8           		iny
-0024C4  1  8C F4 25     geoutch1:	sty	OUTCH+2
+0024C4  1  8C 07 26     geoutch1:	sty	OUTCH+2
 0024C7  1  60           		rts
 0024C8  1               
 0024C8  1  A2 00        println:	ldx	#0
@@ -986,7 +986,7 @@ Current file: ..\src\adm3ax80.a65
 0024F3  1  48           		pha
 0024F4  1  BA           		tsx
 0024F5  1  BD 03 01     		lda	$103,X
-0024F8  1  20 F2 25     		jsr	OUTCH
+0024F8  1  20 05 26     		jsr	OUTCH
 0024FB  1  68           		pla
 0024FC  1  A8           		tay
 0024FD  1  68           		pla
@@ -1037,19 +1037,19 @@ Current file: ..\src\adm3ax80.a65
 002531  1  48           		pha
 002532  1  60           		rts
 002533  1               
-002533  1  BD D3 25     FESUB: 		lda	FETAB,X
+002533  1  BD E6 25     FESUB: 		lda	FETAB,X
 002536  1  8D 2F 02     		sta	SDMCTL
 002539  1  8D 00 D4     		sta	DMACTL
-00253C  1  BD D4 25     		lda	FETAB+1,X
+00253C  1  BD E7 25     		lda	FETAB+1,X
 00253F  1  85 54        		sta	VCP
-002541  1  BD D5 25     		lda	FETAB+2,X
+002541  1  BD E8 25     		lda	FETAB+2,X
 002544  1  85 55        		sta	HCP
 002546  1  85 52        		sta	LMARGN
-002548  1  BD D6 25     		lda	FETAB+3,X
+002548  1  BD E9 25     		lda	FETAB+3,X
 00254B  1  85 53        		sta	RMARGN
-00254D  1  BD D7 25     		lda	FETAB+4,X
+00254D  1  BD EA 25     		lda	FETAB+4,X
 002550  1  8D D9 02     		sta	KEYDEL
-002553  1  BD D8 25     		lda	FETAB+5,X
+002553  1  BD EB 25     		lda	FETAB+5,X
 002556  1  8D DA 02     		sta	KEYREP
 002559  1  60           		rts
 00255A  1               
@@ -1074,124 +1074,128 @@ Current file: ..\src\adm3ax80.a65
 00255F  1               ;		lda	#$4F
 00255F  1               ;		sta	RMARGS
 00255F  1               ;		sta	COMPOS
-00255F  1  20 BD 25     		jsr	DISAB
+00255F  1  20 D0 25     		jsr	DISAB
 002562  1               
-002562  1  20 87 25     IO00:		jsr	resetxep
-002565  1  90 0B        		bcc	IO01				;GOT IT
-002567  1  20 93 25     		jsr	JTOGL				;SWITCH PORTS
-00256A  1  20 87 25     		jsr	resetxep
-00256D  1  90 03        		bcc	IO01				;GOT IT
-00256F  1               							;not founf yet, try SIO bus
-00256F  1               ;		ldx	#11
-00256F  1               ;IO00a:		lda	siohand,x
-00256F  1               ;		sta	OUTPUT,x
-00256F  1               ;		dex
-00256F  1               ;		bpl	IO00a
-00256F  1               ;		jsr	resetxep
-00256F  1               ;		bcc	IO01				;GOT IT
-00256F  1  4C 6F 25     IO00b:		jmp	IO00b				;bail out carry set!
-002572  1               
-002572  1  AD 14 D0     IO01:		lda	PAL				;CHECK COMPUTER TYPE
-002575  1  29 0E        		and	#$0E
-002577  1  D0 05        		bne	IOP1
-002579  1               
-002579  1  A9 D7        		lda 	#PAL80
-00257B  1  20 06 20     		jsr	CMD				;SET 80 COL TO 50HZ
-00257E  1               
-00257E  1  A9 D3        IOP1:		lda	#SCB80				;BURST mode
-002580  1  20 06 20     		jsr	CMD
-002583  1               
-002583  1  18           		clc
-002584  1  4C C4 25     		jmp	ENAB
+002562  1  20 9A 25     IO00:		jsr	resetxep
+002565  1  90 19        		bcc	IO01				;GOT IT
+002567  1  20 A6 25     		jsr	JTOGL				;SWITCH PORTS
+00256A  1  20 9A 25     		jsr	resetxep
+00256D  1  90 11        		bcc	IO01				;GOT IT
+00256F  1               							;not found yet, try SIO bus
+00256F  1  A2 0B        		ldx	#11
+002571  1  BD F2 25     IO00a:		lda	siohand,x
+002574  1  9D 03 20     		sta	OUTPUT,x
+002577  1  CA           		dex
+002578  1  10 F7        		bpl	IO00a
+00257A  1  20 9A 25     		jsr	resetxep
+00257D  1  90 01        		bcc	IO01				;GOT IT
+00257F  1  60           		rts
+002580  1               ;IO00b:		jmp	IO00b				;bail out carry set!
+002580  1               
+002580  1  AD 14 D0     IO01:		lda	PAL				;CHECK COMPUTER TYPE
+002583  1  29 0E        		and	#$0E
+002585  1  D0 05        		bne	IOP1
 002587  1               
-002587  1  A9 C2        resetxep:	lda	#RST80				;RESET 80 COL
-002589  1  4C 09 20     		jmp	CINP				;REQUEST, GET CHAR
-00258C  1               ;
-00258C  1               ;
-00258C  1               ;
-00258C  1  A9 00        CINIT:		lda	#00
-00258E  1  8D CE 25     		sta 	TOGGLE
-002591  1  F0 08        		beq	JINIT
-002593  1               
-002593  1  A9 01        JTOGL:		lda	#01
-002595  1  4D CE 25     		eor 	TOGGLE
-002598  1  8D CE 25     		sta 	TOGGLE
-00259B  1  AE CE 25     JINIT:		ldx 	TOGGLE
-00259E  1  BC CF 25     		ldy	INMST,X
-0025A1  1  8C CC 25     		sty	INMSK
-0025A4  1  BC D1 25     		ldy	OUTMT,X
-0025A7  1  8C CD 25     		sty	OUTMS
-0025AA  1  A9 FF        		lda	#$FF
-0025AC  1  8D 00 D3     		sta	PORTA
-0025AF  1  A2 38        		ldx	#$38
-0025B1  1  8E 02 D3     		stx	PACTL
-0025B4  1  8C 00 D3     		sty	PORTA
-0025B7  1  A2 3C        		ldx	#$3C
-0025B9  1               ;		ldx	#$34				;for SIO, output CA2=0 (inverse!)
-0025B9  1  8E 02 D3     		stx	PACTL
-0025BC  1  60           		rts
-0025BD  1               ;
-0025BD  1  A0 00        DISAB:		ldy	#00
-0025BF  1  8C 0E D4     		sty	NMIEN
-0025C2  1  78           		sei
-0025C3  1  60           		rts
-0025C4  1               ;
-0025C4  1  58           ENAB:		cli
-0025C5  1  A0 C0        		ldy	#$C0
-0025C7  1  8C 0E D4     		sty	NMIEN
-0025CA  1  60           		rts
-0025CB  1               
-0025CB  1               ;============================================================
-0025CB  1               ; XEP80 hardware variables
-0025CB  1               ;============================================================
-0025CB  1  00           DATIN:		.byte	0
-0025CC  1  00           INMSK:		.byte	0
-0025CD  1  00           OUTMS:		.byte	0
-0025CE  1  00           TOGGLE:		.byte	0
-0025CF  1  02 20        INMST:		.byte	02,$20
-0025D1  1  01 10        OUTMT:		.byte	01,$10
-0025D3  1               
-0025D3  1  00 00 00 4F  FETAB:		.byte	0,0,0,$4F,24,3
-0025D7  1  18 03        
-0025D9  1  3E 00 02 27  		.byte	62,0,2,39,30,6
-0025DD  1  1E 06        
-0025DF  1               
-0025DF  1  4C AD 20     siohand:	jmp	sioout
-0025E2  1  4C AA 20     		jmp	siocmd
-0025E5  1  4C F2 20     		jmp	siocinp
-0025E8  1  4C F5 20     		jmp	sioinput
-0025EB  1               ;============================================================
-0025EB  1               ; ADM-3A flags and variables
-0025EB  1               ;============================================================
-0025EB  1  00           escflag:	.byte	0
-0025EC  1  00           dflag:		.byte	0
-0025ED  1  00           hibit:		.byte	0
-0025EE  1  00           cflag:		.byte	0				;flags to set cursor (ESC =)
-0025EF  1  00           cnt:		.byte	0
-0025F0  1               ;csrx:		.byte	0				;equated to HCP	above
-0025F0  1               ;csry:		.byte	0				;equated to VCP above
-0025F0  1               
-0025F0  1  00           bufstart:	.byte	0				;serial-in buffer start
-0025F1  1  00           bufend:		.byte	0				;serial-in buffer end
+002587  1  A9 D7        		lda 	#PAL80
+002589  1  20 06 20     		jsr	CMD				;SET 80 COL TO 50HZ
+00258C  1               
+00258C  1  A9 D3        IOP1:		lda	#SCB80				;BURST mode
+00258E  1  20 06 20     		jsr	CMD
+002591  1               
+002591  1  A9 CF        		lda	#$CF				;switch to VT100
+002593  1  20 06 20     		jsr	CMD
+002596  1               
+002596  1  18           		clc
+002597  1  4C D7 25     		jmp	ENAB
+00259A  1               
+00259A  1  A9 C2        resetxep:	lda	#RST80				;RESET 80 COL
+00259C  1  4C 09 20     		jmp	CINP				;REQUEST, GET CHAR
+00259F  1               ;
+00259F  1               ;
+00259F  1               ;
+00259F  1  A9 00        CINIT:		lda	#00
+0025A1  1  8D E1 25     		sta 	TOGGLE
+0025A4  1  F0 08        		beq	JINIT
+0025A6  1               
+0025A6  1  A9 01        JTOGL:		lda	#01
+0025A8  1  4D E1 25     		eor 	TOGGLE
+0025AB  1  8D E1 25     		sta 	TOGGLE
+0025AE  1  AE E1 25     JINIT:		ldx 	TOGGLE
+0025B1  1  BC E2 25     		ldy	INMST,X
+0025B4  1  8C DF 25     		sty	INMSK
+0025B7  1  BC E4 25     		ldy	OUTMT,X
+0025BA  1  8C E0 25     		sty	OUTMS
+0025BD  1  A9 FF        		lda	#$FF
+0025BF  1  8D 00 D3     		sta	PORTA
+0025C2  1  A2 38        		ldx	#$38
+0025C4  1  8E 02 D3     		stx	PACTL
+0025C7  1  8C 00 D3     		sty	PORTA
+0025CA  1  A2 3C        		ldx	#$3C
+0025CC  1               ;		ldx	#$34				;for SIO, output CA2=0 (inverse!)
+0025CC  1  8E 02 D3     		stx	PACTL
+0025CF  1  60           		rts
+0025D0  1               ;
+0025D0  1  A0 00        DISAB:		ldy	#00
+0025D2  1  8C 0E D4     		sty	NMIEN
+0025D5  1  78           		sei
+0025D6  1  60           		rts
+0025D7  1               ;
+0025D7  1  58           ENAB:		cli
+0025D8  1  A0 C0        		ldy	#$C0
+0025DA  1  8C 0E D4     		sty	NMIEN
+0025DD  1  60           		rts
+0025DE  1               
+0025DE  1               ;============================================================
+0025DE  1               ; XEP80 hardware variables
+0025DE  1               ;============================================================
+0025DE  1  00           DATIN:		.byte	0
+0025DF  1  00           INMSK:		.byte	0
+0025E0  1  00           OUTMS:		.byte	0
+0025E1  1  00           TOGGLE:		.byte	0
+0025E2  1  02 20        INMST:		.byte	02,$20
+0025E4  1  01 10        OUTMT:		.byte	01,$10
+0025E6  1               
+0025E6  1  00 00 00 4F  FETAB:		.byte	0,0,0,$4F,24,3
+0025EA  1  18 03        
+0025EC  1  3E 00 02 27  		.byte	62,0,2,39,30,6
+0025F0  1  1E 06        
 0025F2  1               
-0025F2  1               ;============================================================
-0025F2  1               ; jump to E:-handler put routine
-0025F2  1               ;============================================================
-0025F2  1  4C 00 00     OUTCH:		jmp 0
-0025F5  1               
-0025F5  1  41 44 4D 2D  welcome:	.byte	"ADM-3A Pi-XEP80 started, resetting ATR8000 / Sally ", CR, LF
-0025F9  1  33 41 20 50  
-0025FD  1  69 2D 58 45  
-00262A  1  4D 69 6E 69  		.byte	"Mini-Mon prompt should appear within 2 seconds", CR, LF
-00262E  1  2D 4D 6F 6E  
-002632  1  20 70 72 6F  
-00265A  1  42 20 2D 20  		.BYTE	"B - boot, M - modify RAM, G - goto adddress", CR, 0
-00265E  1  62 6F 6F 74  
-002662  1  2C 20 4D 20  
-002687  1               
-002687  1  4E 6F 20 58  noxep80:	.byte	"No XEP80 present, press any key.",EOL
-00268B  1  45 50 38 30  
-00268F  1  20 70 72 65  
-0026A8  1               
-0026A8  1               buffer		= *
-0026A8  1               
+0025F2  1  4C AD 20     siohand:	jmp	sioout
+0025F5  1  4C AA 20     		jmp	siocmd
+0025F8  1  4C F2 20     		jmp	siocinp
+0025FB  1  4C F5 20     		jmp	sioinput
+0025FE  1               ;============================================================
+0025FE  1               ; ADM-3A flags and variables
+0025FE  1               ;============================================================
+0025FE  1  00           escflag:	.byte	0
+0025FF  1  00           dflag:		.byte	0
+002600  1  00           hibit:		.byte	0
+002601  1  00           cflag:		.byte	0				;flags to set cursor (ESC =)
+002602  1  00           cnt:		.byte	0
+002603  1               ;csrx:		.byte	0				;equated to HCP	above
+002603  1               ;csry:		.byte	0				;equated to VCP above
+002603  1               
+002603  1  00           bufstart:	.byte	0				;serial-in buffer start
+002604  1  00           bufend:		.byte	0				;serial-in buffer end
+002605  1               
+002605  1               ;============================================================
+002605  1               ; jump to E:-handler put routine
+002605  1               ;============================================================
+002605  1  4C 00 00     OUTCH:		jmp 0
+002608  1               
+002608  1  41 44 4D 2D  welcome:	.byte	"ADM-3A Pi-XEP80 started, resetting ATR8000 / Sally ", CR, LF
+00260C  1  33 41 20 50  
+002610  1  69 2D 58 45  
+00263D  1  4D 69 6E 69  		.byte	"Mini-Mon prompt should appear within 2 seconds", CR, LF
+002641  1  2D 4D 6F 6E  
+002645  1  20 70 72 6F  
+00266D  1  42 20 2D 20  		.BYTE	"B - boot, M - modify RAM, G - goto adddress", CR, 0
+002671  1  62 6F 6F 74  
+002675  1  2C 20 4D 20  
+00269A  1               
+00269A  1  4E 6F 20 58  noxep80:	.byte	"No XEP80 present, press any key.",EOL
+00269E  1  45 50 38 30  
+0026A2  1  20 70 72 65  
+0026BB  1               
+0026BB  1               buffer		= *
+0026BB  1               

@@ -1069,15 +1069,16 @@ IO00:		jsr	resetxep
 		jsr	JTOGL				;SWITCH PORTS
 		jsr	resetxep
 		bcc	IO01				;GOT IT
-							;not founf yet, try SIO bus
-;		ldx	#11
-;IO00a:		lda	siohand,x
-;		sta	OUTPUT,x
-;		dex
-;		bpl	IO00a
-;		jsr	resetxep
-;		bcc	IO01				;GOT IT
-IO00b:		jmp	IO00b				;bail out carry set!
+							;not found yet, try SIO bus
+		ldx	#11
+IO00a:		lda	siohand,x
+		sta	OUTPUT,x
+		dex
+		bpl	IO00a
+		jsr	resetxep
+		bcc	IO01				;GOT IT
+		rts
+;IO00b:		jmp	IO00b				;bail out carry set!
 
 IO01:		lda	PAL				;CHECK COMPUTER TYPE
 		and	#$0E
@@ -1089,6 +1090,9 @@ IO01:		lda	PAL				;CHECK COMPUTER TYPE
 IOP1:		lda	#SCB80				;BURST mode
 		jsr	CMD
 
+		lda	#$CF				;switch to VT100
+		jsr	CMD
+		
 		clc
 		jmp	ENAB
 

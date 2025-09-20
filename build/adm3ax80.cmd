@@ -13,9 +13,9 @@ if NOT %result%==0 goto ende
 
 cd %REL%
 copy %RES%\dos25.atr .
-copy /Y /B adm3ax80.com + runad.com autorun.sys
+copy /Y /B adm3ax80.com + runad.com adm3ax80.ar1
 
-%TOOLS%\xfddos -i dos25.atr autorun.sys	
+%TOOLS%\xfddos -i dos25.atr adm3ax80.ar1
 %TOOLS%\xfddos -i dos25.atr C:\github\Sally-2\atari\autoterm.com	
 
 rem %TOOLS%\xfddos -i dos25.atr adm3ax80.com
