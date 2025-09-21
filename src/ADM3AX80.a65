@@ -479,6 +479,9 @@ getkey0:	ldx	#$ff
 		
 		lda	(KEYDEF),y
 		
+		bit	termtype
+		bmi	getkey1
+		
 		cmp	#'a'
 		bcc	getkey1
 		cmp	#'z'+1
@@ -645,7 +648,9 @@ time1:		dex
 ; ADM-3A output routines
 ;============================================================
 adm3aput:	and	#127				;clear bit 7
-
+		bit	termtype
+		bmi	decode4
+		
 		ldx	direct
 		bne	decode4
 		
@@ -1091,6 +1096,7 @@ IOP1:		lda	#SCB80				;BURST mode
 		jsr	CMD
 
 		lda	#$CF				;switch to VT100
+		sta	termtype
 		jsr	CMD
 		
 		clc
@@ -1158,6 +1164,8 @@ dflag:		.byte	0
 hibit:		.byte	0
 cflag:		.byte	0				;flags to set cursor (ESC =)
 cnt:		.byte	0
+termtype:	.byte	0
+
 ;csrx:		.byte	0				;equated to HCP	above
 ;csry:		.byte	0				;equated to VCP above
 
