@@ -39,8 +39,7 @@ move *.lst lst > nul
 move *.o obj > nul
 move *.a obj > nul
 
-"C:\Program Files (x86)\Altirra\Altirra64.exe" C:\github\atari-adm3a-xep80\release\DOS25.atr
-
+c:\atari\aspeqt7\aspeqt.exe
 goto eof
 
 :ende

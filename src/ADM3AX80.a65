@@ -31,6 +31,7 @@ XCH80	=	$50
 LMG80	=	$60
 LMH80	=	$70
 YCR80	=	$80
+SCS80	=	$98
 SGR80	=	$99
 PAG80	=	$9A
 RMG80	=	$A0
@@ -40,6 +41,7 @@ CUR80	=	$C1
 RST80	=	$C2
 PST80	=	$C3
 CLR80	=	$C4
+VT100	=	$CF
 LIS80	=	$D0
 SCR80	=	$D2
 SCB80	=	$D3
@@ -282,7 +284,7 @@ S3:		rts					;6 CYCLES
 siocmd: 	sec 					;THIS CODE MUST NOT
 		bcs 	SOUT 				;CROSS A PAGE BOUNDARY
 sioout:		clc 					;CMD FLAG=0 FOR CHAR
-SOUT: 		ldy 	#$3c				;1, will be inverted, hence 0
+SOUT: 		ldy 	#$3C				;1, will be inverted, hence 0
 
 		jsr	DISAB
 		jsr 	SIOSEND				;SEND staRT BIT
@@ -399,10 +401,8 @@ sioin9:		rts
 ;============================================================
 ; actual start of program
 ;============================================================
-start:		jsr	geoutch
-		
-		jsr	CINIT		
-		jsr 	EOPEN
+start:		jsr	initadm3a
+
 		bcc	eopenok				;carry-clear, got response
 
 		lda	#$22				;no response, show message and reset
@@ -424,31 +424,53 @@ eopenok:	jsr	resetsally
 		sta	VSERIN
 		lda	#>serinirq
 		sta	VSERIN+1
-		lda	#<breakirq
-		sta	BRKKY
-		lda	#>breakirq
-		sta	BRKKY+1
+;		lda	#<breakirq
+;		sta	BRKKY
+;		lda	#>breakirq
+;		sta	BRKKY+1
 		jsr	SETPOKY				;reprogram POKEY for 9600 baud duplex
 		cli
 
-		jsr	clearvars
+;		lda	#CR				;load CR and send key
+;		sta	SEROUT
 
+;		jsr	clearvars
+
+;		jsr	time				;send CR (POKEY code)
+
+		bit	once
+		bmi	main
+		dec	once
+		
 		lda	#<welcome			;print welcome message
 		sta	PTR
 		lda	#>welcome
 		sta	PTR+1
 		jsr	printadm
-				
-		jsr	time				;send CR (POKEY code)
-		lda	#$0c
-		sta	CH
 
+		jsr	time
+		
+		lda	#$0C				;load CR and send key
+		sta	CH
 		
 ;============================================================
 ; main loop
 ;============================================================
-main:		jsr	getkey
-		beq	main1
+main:		lda	CONSOL				;SELECT pressed?
+		and	#2
+		bne	main3				;no, proceed with getkey
+		
+		lda	#$ff
+		eor	termtype
+		sta	termtype
+		jsr	initadm3a
+			
+main4:		lda	CONSOL				;select released?
+		and	#2
+		beq	main4
+		
+main3:		jsr	getkey
+		beq	main1				;no key pressed
 				
 		sta	SEROUT
 		
@@ -480,7 +502,7 @@ getkey0:	ldx	#$ff
 		lda	(KEYDEF),y
 		
 		bit	termtype
-		bmi	getkey1
+		bmi	getkey1				;no uppercase translation for VT100
 		
 		cmp	#'a'
 		bcc	getkey1
@@ -633,7 +655,7 @@ breakirq:	pla
 ;============================================================
 ; wait some time before sending CR
 ;============================================================
-time:		lda	#12
+time:		lda	#16
 		ldy	#0
 		ldx	#0
 time1:		dex
@@ -649,10 +671,10 @@ time1:		dex
 ;============================================================
 adm3aput:	and	#127				;clear bit 7
 		bit	termtype
-		bmi	decode4
+		bmi	decode4				;if VT100 just output char
 		
-		ldx	direct
-		bne	decode4
+		ldx	dflag				;if ADM-3A and direct mode
+		bne	decode4				;just output char
 		
 		cmp	#32				;<space = control char?
 		bcc	ctrl
@@ -673,10 +695,10 @@ decode5:	ora	hibit
 
 decode4:	jsr	OUTPUT				;print char and fall through
 	
-		lda	#0
+		lda	#0				;reset ADM-3A flags
 		sta	escflag
 		sta	cflag
-		sta	direct
+		sta	dflag
 		
 advancex:	inc	csrx				;increment xpos
 		ldx	csrx
@@ -896,14 +918,14 @@ clrend1:	lda	#DELIN
 		jmp	clrline
 	
 	
-clearvars:	lda	#0
-		sta	hibit
-		sta	escflag
-		sta	dflag
-		sta	cflag
-		sta	csrx
-		sta	csry
-		rts
+;clearvars:	lda	#0
+;		sta	hibit
+;		sta	escflag
+;		sta	dflag
+;		sta	cflag
+;		sta	csrx
+;		sta	csry
+;		rts
 ;============================================================
 ; ADM-3A debug
 ;============================================================		
@@ -942,15 +964,6 @@ escadr:		.word	disattr-1, enaattr-1
 ;============================================================
 ;
 ;============================================================
-geoutch:	ldx	$E406				;CHAR PUT routine
-		ldy	$E407
-		inx
-		stx	OUTCH+1
-		bne	geoutch1
-		iny
-geoutch1:	sty	OUTCH+2
-		rts
-
 println:	ldx	#0
 		lda	#CPTXTR
 		sta	ICCOM,x
@@ -1046,6 +1059,30 @@ FESUB: 		lda	FETAB,X
 		sta	KEYREP
 		rts
 	
+;============================================================
+; initadm3a
+; - get outchar routine E:-handler
+; - CINIT (check joyport 1 or 2)
+; - EOPEN 
+;============================================================
+initadm3a:	lda	#0
+		ldx	#bufend-escflag
+initadm3a1:	sta	escflag,x
+		dex
+		bpl	initadm3a1
+		
+		ldx	$E406				;CHAR PUT routine
+		ldy	$E407
+		inx
+		stx	OUTCH+1
+		bne	geoutch1
+		iny
+geoutch1:	sty	OUTCH+2
+	
+CINIT:		lda	#00
+		sta 	TOGGLE
+		jsr	JINIT
+
 ;	
 ;
 ; set timing control pointer ($f6) to 4
@@ -1080,10 +1117,10 @@ IO00a:		lda	siohand,x
 		sta	OUTPUT,x
 		dex
 		bpl	IO00a
+		
 		jsr	resetxep
 		bcc	IO01				;GOT IT
 		rts
-;IO00b:		jmp	IO00b				;bail out carry set!
 
 IO01:		lda	PAL				;CHECK COMPUTER TYPE
 		and	#$0E
@@ -1092,13 +1129,45 @@ IO01:		lda	PAL				;CHECK COMPUTER TYPE
 		lda 	#PAL80
 		jsr	CMD				;SET 80 COL TO 50HZ
 		
-IOP1:		lda	#SCB80				;BURST mode
+IOP1:		ldx	#5
+copya3msg:	lda	adm3amsg,x
+		sta	statusmsg+1,x
+		dex
+		bpl	copya3msg
+		
+		bit	termtype
+		bpl	IOP2
+		
+		lda	#VT100				;switch to VT100
+		jsr	CMD	
+		
+		ldx	#5
+copyvtmsg:	lda	vt100msg,x
+		sta	statusmsg+1,x
+		dex
+		bpl	copyvtmsg
+		
+IOP2:		lda	#SCB80				;BURST mode
+		jsr	CMD		
+		lda	#SCS80				;Cursor Status ROW
 		jsr	CMD
 
-		lda	#$CF				;switch to VT100
-		sta	termtype
-		jsr	CMD
+		lda	#$80
+		sta	hibit
+		lda	#<statusmsg
+		sta	PTR
+		lda	#>statusmsg
+		sta	PTR+1
+		jsr	printadm
 		
+		lda	#0
+		sta	hibit
+		
+		lda	#YCR80				;cursor row 0
+		jsr	CMD
+		lda	#0				;cursor column 0
+		jsr	CMD
+
 		clc
 		jmp	ENAB
 
@@ -1106,11 +1175,19 @@ resetxep:	lda	#RST80				;RESET 80 COL
 		jmp	CINP				;REQUEST, GET CHAR
 ;	
 ;	
-;	
-CINIT:		lda	#00
-		sta 	TOGGLE
-		beq	JINIT
-		
+;
+DISAB:		ldy	#00
+		sty	NMIEN
+		sei
+		rts
+;
+ENAB:		cli
+		ldy	#$C0
+		sty	NMIEN
+		rts
+;
+;
+;
 JTOGL:		lda	#01
 		eor 	TOGGLE
 		sta 	TOGGLE
@@ -1124,21 +1201,10 @@ JINIT:		ldx 	TOGGLE
 		ldx	#$38
 		stx	PACTL
 		sty	PORTA
-		ldx	#$3C			
-;		ldx	#$34				;for SIO, output CA2=0 (inverse!)
-		stx	PACTL
+;		ldx	#$3C		
+		ldx	#$34				;CA2 = 0, gets inverted, so 1 (stop-bit)
+		stx	PACTL		
 		rts
-;
-DISAB:		ldy	#00
-		sty	NMIEN
-		sei
-		rts
-;
-ENAB:		cli
-		ldy	#$C0
-		sty	NMIEN
-		rts
-		
 ;============================================================
 ; XEP80 hardware variables
 ;============================================================
@@ -1164,14 +1230,15 @@ dflag:		.byte	0
 hibit:		.byte	0
 cflag:		.byte	0				;flags to set cursor (ESC =)
 cnt:		.byte	0
-termtype:	.byte	0
-
-;csrx:		.byte	0				;equated to HCP	above
-;csry:		.byte	0				;equated to VCP above
-
 bufstart:	.byte	0				;serial-in buffer start
 bufend:		.byte	0				;serial-in buffer end
-			
+	
+;
+; not-initialized
+;
+once:		.byte	0
+termtype:	.byte	0
+
 ;============================================================
 ; jump to E:-handler put routine
 ;============================================================
@@ -1182,5 +1249,8 @@ welcome:	.byte	"ADM-3A Pi-XEP80 started, resetting ATR8000 / Sally ", CR, LF
 		.BYTE	"B - boot, M - modify RAM, G - goto adddress", CR, 0
 		
 noxep80:	.byte	"No XEP80 present, press any key.",EOL
-
+;			 12345678901234567890123456789012345678901234567890123456789012345678901234567890
+statusmsg:	.byte	" ADM3A   9600 7O1                                                               ", 0
+vt100msg:	.byte	"VT100 "
+adm3amsg:	.byte	"ADM-3A"
 buffer		= *
