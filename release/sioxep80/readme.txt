@@ -1,0 +1,1 @@
+Every time the driver has been newly generated, maker.bas must be run in order to generate the relocatible handler (autorun.sys)

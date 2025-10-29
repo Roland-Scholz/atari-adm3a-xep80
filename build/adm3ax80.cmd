@@ -1,6 +1,7 @@
 @echo off
 
 set PLATFORM=4
+set ATR=adm3ax80
 call var-def.cmd
 
 
@@ -10,25 +11,26 @@ if NOT %result%==0 goto ende
 call :compile_module runad 2e0
 if NOT %result%==0 goto ende
 
-
 cd %REL%
-copy %RES%\dos25.atr .
-copy /Y /B adm3ax80.com + runad.com adm3ax80.ar1
+copy %RES%\mydos90k.atr %ATR%.atr
+copy /Y /B adm3ax80.com + runad.com adm3ax80.ar0
 
-%TOOLS%\xfddos -i dos25.atr adm3ax80.ar1
-%TOOLS%\xfddos -i dos25.atr C:\github\Sally-2\atari\autoterm.com	
+%TOOLS%\xfddos -i %ATR%.atr adm3ax80.ar0
 
-rem %TOOLS%\xfddos -i dos25.atr adm3ax80.com
-	
-rem ..\%TOOLS%\xfddos -i boot.atr bootsec.com
-rem echo on
-
+cd %ATR%
+rmdir /Q /S obj > nul 2> nul
+rmdir /Q /S lst > nul 2> nul
 mkdir obj > nul 2> nul
 mkdir lst > nul 2> nul
 
-move *.lst lst > nul
-move *.o obj > nul
-move *.a obj > nul
+move ..\%ATR%*.* . > nul 2> nul
+move ..\runad*.* . > nul 2> nul
+
+move *.lst lst > nul 2> nul
+move *.o obj > nul 2> nul
+move *.a obj > nul 2> nul
+move *.com obj > nul 2> nul
+move *.ar* obj > nul 2> nul
 
 c:\atari\aspeqt7\aspeqt.exe
 goto eof

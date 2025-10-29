@@ -1,6 +1,8 @@
 @echo off
 
 set PLATFORM=4
+set ATR=bobxep80
+
 call var-def.cmd
 
 
@@ -9,24 +11,30 @@ call :compile_module bobxep80_runad 02e0
 
 if NOT %result%==0 goto ende
 
-
 cd %REL%
-copy %RES%\dos25.atr .
+copy %RES%\%ATR%.atr .
 
 rem copy %RES%\module1.btm .
 copy /Y /B bobxep80.com + bobxep80_runad.com module1.btm
 
-%TOOLS%\xfddos -i dos25.atr module1.btm
+%TOOLS%\xfddos -i %ATR%.atr module1.btm
 
+cd %ATR%
+
+rmdir /S /Q obj > nul 2> nul
+rmdir /S /Q lst > nul 2> nul
 mkdir obj > nul 2> nul
 mkdir lst > nul 2> nul
 
-move *.lst lst > nul
-move *.o obj > nul
-move *.a obj > nul
+move ..\%ATR%*.* . > nul 2> nul
 
-rem "C:\Program Files (x86)\Altirra\Altirra64.exe" C:\github\atari-adm3a-xep80\release\DOS25.atr
-"C:\Program Files (x86)\Aspeqt\AspeQt.exe"
+move *.lst lst > nul 2> nul
+move *.o obj > nul 2> nul
+move *.a obj > nul 2> nul
+move *.com obj > nul 2> nul
+move ..\module1.btm obj > nul 2> nul
+
+C:\Program Files (x86)\Aspeqt\AspeQt.exe"
 goto eof
 
 :ende

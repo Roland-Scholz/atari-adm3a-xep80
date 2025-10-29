@@ -1082,6 +1082,10 @@ geoutch1:	sty	OUTCH+2
 CINIT:		lda	#00
 		sta 	TOGGLE
 		jsr	JINIT
+		
+		ldx	#0
+CINIT1:		dex
+		bne	CINIT1
 
 ;	
 ;
@@ -1129,27 +1133,27 @@ IO01:		lda	PAL				;CHECK COMPUTER TYPE
 		lda 	#PAL80
 		jsr	CMD				;SET 80 COL TO 50HZ
 		
-IOP1:		ldx	#5
-copya3msg:	lda	adm3amsg,x
-		sta	statusmsg+1,x
-		dex
-		bpl	copya3msg
+IOP1:		lda	#SCB80				;BURST mode
+		jsr	CMD				
 		
-		bit	termtype
+		bit	termtype			;is ADM-3A or VT100?
 		bpl	IOP2
 		
 		lda	#VT100				;switch to VT100
-		jsr	CMD	
+		jsr	CMD
 		
-		ldx	#5
-copyvtmsg:	lda	vt100msg,x
-		sta	statusmsg+1,x
-		dex
-		bpl	copyvtmsg
+		lda	#0
+		sta	hibit
 		
-IOP2:		lda	#SCB80				;BURST mode
-		jsr	CMD		
-		lda	#SCS80				;Cursor Status ROW
+		lda	#<vt100msg			;clear screen
+		sta	PTR
+		lda	#>vt100msg
+		sta	PTR+1
+		jsr	printadm
+		jmp	IOP3
+
+		
+IOP2:		lda	#SCS80				;Cursor Status ROW
 		jsr	CMD
 
 		lda	#$80
@@ -1168,7 +1172,7 @@ IOP2:		lda	#SCB80				;BURST mode
 		lda	#0				;cursor column 0
 		jsr	CMD
 
-		clc
+IOP3:		clc
 		jmp	ENAB
 
 resetxep:	lda	#RST80				;RESET 80 COL
@@ -1250,7 +1254,7 @@ welcome:	.byte	"ADM-3A Pi-XEP80 started, resetting ATR8000 / Sally ", CR, LF
 		
 noxep80:	.byte	"No XEP80 present, press any key.",EOL
 ;			 12345678901234567890123456789012345678901234567890123456789012345678901234567890
-statusmsg:	.byte	" ADM3A   9600 7O1                                                               ", 0
-vt100msg:	.byte	"VT100 "
-adm3amsg:	.byte	"ADM-3A"
+statusmsg:	.byte	"ADM-3A   9600 7O1                                                               ", 0
+vt100msg:	.byte	27,"[2J",27,"[H",0
+;adm3amsg:	.byte	"ADM-3A"
 buffer		= *
